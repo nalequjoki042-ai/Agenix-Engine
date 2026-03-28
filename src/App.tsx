@@ -1,31 +1,59 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { EngineCanvas } from './components/canvas/EngineCanvas'
 import { useUIStore } from './store/useUIStore'
 import { useCanvasStore } from './store/useCanvasStore'
-import { Plus, Box, Play, Download, Square, Code, Settings } from 'lucide-react'
+import { Box, Play, Download, Square, Code, Settings, ListTree, User, Hexagon } from 'lucide-react'
 
 function App() {
   const { contextMenu, closeContextMenu } = useUIStore()
-  const { addNode, selectedNodeIds, nodes, updateNode } = useCanvasStore()
+  const { addObject, selectedObjectIds, objects, updateObject, selectObject } = useCanvasStore()
   
-  // Properties panel state (for demonstration)
-  const selectedNode = nodes.find(n => n.id === selectedNodeIds[0])
+  const selectedObject = objects.find(o => o.id === selectedObjectIds[0])
 
-  // Context Menu Actions
-  const handleCreateObject = (type: 'cube' | 'trigger') => {
+  const getDescendantIds = (parentId: string): string[] => {
+    const children = objects.filter(o => o.parentId === parentId);
+    return children.reduce((acc, child) => {
+      return [...acc, child.id, ...getDescendantIds(child.id)];
+    }, [] as string[]);
+  };
+
+  const descendantIds = selectedObject ? getDescendantIds(selectedObject.id) : [];
+  const validParents = objects.filter(o => 
+    selectedObject && o.id !== selectedObject.id && !descendantIds.includes(o.id)
+  );
+
+  const handleCreateObject = (type: 'box' | 'zone' | 'unit') => {
     if (!contextMenu) return
     const id = Math.random().toString(36).substr(2, 9)
-    const color = type === 'cube' ? '#4CAF50' : 'rgba(255, 100, 100, 0.5)'
     
-    addNode({
+    let color = '#646cff';
+    if (type === 'zone') color = 'rgba(255, 100, 100, 0.5)';
+    if (type === 'unit') color = '#4CAF50';
+    
+    let name = 'Box';
+    if (type === 'zone') name = 'Zone';
+    if (type === 'unit') name = 'Unit';
+
+    addObject({
       id,
-      type: 'object',
-      x: contextMenu.canvasX,
-      y: contextMenu.canvasY,
+      name,
+      type,
+      parentId: null,
+      childrenIds: [],
+      tags: [],
+      transform: {
+        x: contextMenu.canvasX,
+        y: contextMenu.canvasY,
+        rotation: 0,
+        scaleX: 1,
+        scaleY: 1
+      },
+      properties: {},
+      logicRefs: [],
+      description: '',
       width: 100,
       height: 100,
-      color: type === 'cube' ? '#646cff' : color, // Default engine accent
-      label: type === 'cube' ? 'Cube' : 'Trigger'
+      color
     })
     closeContextMenu()
   }
@@ -53,87 +81,215 @@ function App() {
           <button><Download size={16} /> Export</button>
         </div>
 
+        {/* Hierarchy Panel (Left side) */}
+        <div 
+          className="engine-glass"
+          style={{
+            position: 'absolute',
+            left: 20,
+            top: 20,
+            bottom: 20,
+            width: 260,
+            padding: 20,
+            borderRadius: 12,
+            pointerEvents: 'auto',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+            <ListTree size={20} />
+            <h3 style={{ margin: 0 }}>Hierarchy</h3>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {objects.length === 0 && <div style={{color: '#888', fontSize: 14}}>No objects in scene</div>}
+            
+            {/* Render root objects, then their children recursively */}
+            {(() => {
+              const renderNode = (obj: typeof objects[0], depth: number = 0, visited = new Set<string>()): React.ReactNode => {
+                if (visited.has(obj.id)) return null;
+                const newVisited = new Set(visited).add(obj.id);
+                
+                const children = objects.filter(o => o.parentId === obj.id);
+                return (
+                  <div key={obj.id}>
+                    <div 
+                      onClick={() => selectObject(obj.id)}
+                      style={{
+                        padding: '6px 8px',
+                        background: selectedObjectIds.includes(obj.id) ? 'var(--accent-color)' : 'transparent',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        fontSize: 14,
+                        marginLeft: depth * 16,
+                        transition: 'background 0.2s',
+                        border: '1px solid transparent',
+                        borderColor: selectedObjectIds.includes(obj.id) ? 'rgba(255,255,255,0.2)' : 'transparent'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = selectedObjectIds.includes(obj.id) ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)'}
+                      onMouseLeave={e => e.currentTarget.style.background = selectedObjectIds.includes(obj.id) ? 'var(--accent-color)' : 'transparent'}
+                    >
+                      {obj.type === 'box' && <Box size={14} />}
+                      {obj.type === 'zone' && <Hexagon size={14} />}
+                      {obj.type === 'unit' && <User size={14} />}
+                      {obj.type === 'custom' && <Square size={14} />}
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{obj.name}</span>
+                    </div>
+                    {children.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 2 }}>
+                        {children.map(child => renderNode(child, depth + 1, newVisited))}
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+              return objects.filter(o => !o.parentId).map(obj => renderNode(obj, 0));
+            })()}
+          </div>
+        </div>
+
         {/* Properties Panel (Right side) */}
-        {selectedNode && (
+        {selectedObject && (
           <div 
             className="engine-glass"
             style={{
               position: 'absolute',
               right: 20,
               top: 20,
-              width: 300,
+              bottom: 20,
+              width: 320,
               padding: 20,
               borderRadius: 12,
-              pointerEvents: 'auto'
+              pointerEvents: 'auto',
+              overflowY: 'auto'
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
               <Settings size={20} />
-              <h3 style={{ margin: 0 }}>Properties</h3>
+              <h3 style={{ margin: 0 }}>Inspector</h3>
             </div>
             
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 8, marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>OBJECT NAME</div>
-              <div style={{ fontWeight: 600 }}>{selectedNode.label}</div>
+            {/* General Section */}
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 12, color: '#888' }}>NAME</span>
+                  <input 
+                    type="text" 
+                    value={selectedObject.name} 
+                    onChange={(e) => updateObject(selectedObject.id, { name: e.target.value })}
+                    style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 12, color: '#888' }}>TYPE</span>
+                  <select 
+                    value={selectedObject.type}
+                    onChange={(e) => updateObject(selectedObject.id, { type: e.target.value as any })}
+                    style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                  >
+                    <option value="box">Box</option>
+                    <option value="zone">Zone</option>
+                    <option value="unit">Unit</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 12, color: '#888' }}>CLASS</span>
+                  <input 
+                    type="text" 
+                    value={selectedObject.className || ''} 
+                    onChange={(e) => updateObject(selectedObject.id, { className: e.target.value })}
+                    placeholder="None"
+                    style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                  />
+                </div>
+              </div>
+              
+              <div style={{ marginBottom: 12 }}>
+                <span style={{ fontSize: 12, color: '#888' }}>TAGS (comma separated)</span>
+                <input 
+                  type="text" 
+                  value={selectedObject.tags.join(', ')} 
+                  onChange={(e) => updateObject(selectedObject.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+                  placeholder="e.g. interactive, solid"
+                  style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <span style={{ fontSize: 12, color: '#888' }}>PARENT ID</span>
+                <select 
+                  value={selectedObject.parentId || ''}
+                  onChange={(e) => updateObject(selectedObject.id, { parentId: e.target.value || null })}
+                  style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                >
+                  <option value="">(No Parent)</option>
+                  {validParents.map(o => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-               <div>
-                 <span style={{ fontSize: 12, color: '#888' }}>X:</span>
-                 <input 
-                   type="number" 
-                   value={Math.round(selectedNode.x)} 
-                   onChange={(e) => updateNode(selectedNode.id, { x: Number(e.target.value) })}
-                   style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                 />
-               </div>
-               <div>
-                 <span style={{ fontSize: 12, color: '#888' }}>Y:</span>
-                 <input 
-                   type="number" 
-                   value={Math.round(selectedNode.y)} 
-                   onChange={(e) => updateNode(selectedNode.id, { y: Number(e.target.value) })}
-                   style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                 />
-               </div>
+            {/* Transform Section */}
+            <div style={{ background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 8, marginBottom: 16 }}>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 'bold' }}>TRANSFORM</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                 <div>
+                   <span style={{ fontSize: 12, color: '#888' }}>X:</span>
+                   <input 
+                     type="number" 
+                     value={Math.round(selectedObject.transform.x)} 
+                     onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, x: Number(e.target.value) } })}
+                     style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                   />
+                 </div>
+                 <div>
+                   <span style={{ fontSize: 12, color: '#888' }}>Y:</span>
+                   <input 
+                     type="number" 
+                     value={Math.round(selectedObject.transform.y)} 
+                     onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, y: Number(e.target.value) } })}
+                     style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                   />
+                 </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                 <div>
+                   <span style={{ fontSize: 12, color: '#888' }}>ROTATION:</span>
+                   <input 
+                     type="number" 
+                     value={selectedObject.transform.rotation || 0} 
+                     onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, rotation: Number(e.target.value) } })}
+                     style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                   />
+                 </div>
+                 <div>
+                   <span style={{ fontSize: 12, color: '#888' }}>SCALE:</span>
+                   <input 
+                     type="number" 
+                     value={selectedObject.transform.scaleX || 1} 
+                     onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, scaleX: Number(e.target.value), scaleY: Number(e.target.value) } })}
+                     style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
+                   />
+                 </div>
+              </div>
             </div>
 
             {/* AI Core Component (Placeholder for later) */}
             <div style={{ marginTop: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: '#a8b1ff' }}>
                 <Code size={16} />
-                <span style={{ fontSize: 12, fontWeight: 'bold', letterSpacing: 1 }}>AI BEHAVIOR</span>
+                <span style={{ fontSize: 12, fontWeight: 'bold', letterSpacing: 1 }}>LOGIC & BEHAVIOR (Coming Soon)</span>
               </div>
-              <textarea 
-                placeholder="Например: Этот куб должен прыгать при клике..."
-                style={{
-                  width: '100%',
-                  height: 100,
-                  padding: 12,
-                  background: 'rgba(0,0,0,0.2)',
-                  border: '1px solid rgba(100,108,255,0.3)',
-                  borderRadius: 8,
-                  color: 'white',
-                  resize: 'none',
-                  fontFamily: 'inherit',
-                  fontSize: 14
-                }}
-              />
-              <button 
-                style={{ 
-                  width: '100%', 
-                  padding: '10px', 
-                  background: 'var(--accent-color)', 
-                  border: 'none', 
-                  borderRadius: 6,
-                  color: 'white',
-                  fontWeight: 600,
-                  marginTop: 10,
-                  cursor: 'pointer'
-                }}
-              >
-                Let AI Think 🤖
-              </button>
             </div>
 
           </div>
@@ -146,11 +302,14 @@ function App() {
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onContextMenu={e => e.preventDefault()}
           >
-            <div className="context-menu-item" onClick={(e) => { e.stopPropagation(); handleCreateObject('cube') }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Square size={14} /> Create Object</span>
+            <div className="context-menu-item" onClick={(e) => { e.stopPropagation(); handleCreateObject('box') }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Square size={14} /> Create Box</span>
             </div>
-            <div className="context-menu-item" onClick={(e) => { e.stopPropagation(); handleCreateObject('trigger') }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Box size={14} /> Create Trigger</span>
+            <div className="context-menu-item" onClick={(e) => { e.stopPropagation(); handleCreateObject('zone') }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Hexagon size={14} /> Create Zone</span>
+            </div>
+            <div className="context-menu-item" onClick={(e) => { e.stopPropagation(); handleCreateObject('unit') }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><User size={14} /> Create Unit</span>
             </div>
           </div>
         )}

@@ -8,12 +8,12 @@ import { Grid } from './Grid'
 export const EngineCanvas: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   
-  const nodes = useCanvasStore(s => s.nodes)
+  const objects = useCanvasStore(s => s.objects)
   const camera = useCanvasStore(s => s.camera)
   const setCamera = useCanvasStore(s => s.setCamera)
-  const selectNode = useCanvasStore(s => s.selectNode)
-  const updateNode = useCanvasStore(s => s.updateNode)
-  const selectedNodeIds = useCanvasStore(s => s.selectedNodeIds)
+  const selectObject = useCanvasStore(s => s.selectObject)
+  const updateObject = useCanvasStore(s => s.updateObject)
+  const selectedObjectIds = useCanvasStore(s => s.selectedObjectIds)
   
   const { openContextMenu, closeContextMenu } = useUIStore()
 
@@ -80,7 +80,7 @@ export const EngineCanvas: React.FC = () => {
     } else if (e.evt.button === 0) { // Left Click
       closeContextMenu()
       if (clickedOnEmpty) {
-        selectNode(null)
+        selectObject(null)
       }
     }
   }
@@ -112,42 +112,51 @@ export const EngineCanvas: React.FC = () => {
         </Layer>
         
         <Layer>
-          {nodes.map(node => (
+          {objects.map(obj => (
             <Group 
-              key={node.id} 
-              x={node.x} 
-              y={node.y}
+              key={obj.id} 
+              x={obj.transform.x} 
+              y={obj.transform.y}
+              rotation={obj.transform.rotation || 0}
+              scaleX={obj.transform.scaleX || 1}
+              scaleY={obj.transform.scaleY || 1}
               draggable
               onClick={(e) => {
                 // stop event from bubbling up to stage
                 e.cancelBubble = true;
-                selectNode(node.id)
+                selectObject(obj.id)
               }}
               onDragMove={(e) => {
                  // optionally update during drag, but for max performance we usually update onDragEnd.
                  // We will update here so properties panel updates live. Zustand helps with performance here.
-                 updateNode(node.id, { x: e.target.x(), y: e.target.y() })
+                 updateObject(obj.id, { 
+                   transform: { 
+                     ...obj.transform, 
+                     x: e.target.x(), 
+                     y: e.target.y() 
+                   } 
+                 })
               }}
             >
               <Rect
-                width={node.width}
-                height={node.height}
-                fill={node.color}
+                width={obj.width}
+                height={obj.height}
+                fill={obj.color}
                 cornerRadius={8}
                 shadowColor="black"
                 shadowBlur={10}
                 shadowOpacity={0.3}
                 shadowOffset={{ x: 0, y: 5 }}
-                stroke={selectedNodeIds.includes(node.id) ? '#646cff' : 'transparent'}
-                strokeWidth={selectedNodeIds.includes(node.id) ? 3 : 0}
+                stroke={selectedObjectIds.includes(obj.id) ? '#646cff' : 'transparent'}
+                strokeWidth={selectedObjectIds.includes(obj.id) ? 3 : 0}
               />
               <Text 
-                text={node.label} 
+                text={obj.name} 
                 fill="white" 
                 align="center" 
                 verticalAlign="middle"
-                width={node.width}
-                height={node.height}
+                width={obj.width}
+                height={obj.height}
                 fontFamily="Inter"
                 fontSize={14}
                 fontStyle="500"
