@@ -54,6 +54,7 @@ trigger: always_on
 4. Что сознательно НЕ делалось
 5. Есть ли риски / открытые моменты
 6. Заполнить ( C:\Users\user\Documents\Program\28.03\Agenix\.agents\_agent_docs\ENGINE_LOG.md ) ! 
+7. Если есть что доабвить сделать это ( C:\Users\user\Documents\Program\28.03\Agenix\.agents\_agent_docs\OPEN_QUESTIONS.md  )
 
 ---
 

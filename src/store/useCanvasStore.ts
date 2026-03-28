@@ -49,6 +49,7 @@ interface CanvasState {
   removeObject: (id: string) => void
   selectObject: (id: string | null, multi?: boolean) => void
   setCamera: (camera: Partial<CanvasState['camera']>) => void
+  setObjects: (objects: GameObject[]) => void
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
@@ -79,5 +80,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
 
   setCamera: (cameraUpdates) => set((state) => ({
     camera: { ...state.camera, ...cameraUpdates }
-  }))
+  })),
+
+  setObjects: (objects) => set({ objects, selectedObjectIds: [] })
 }))

@@ -1,25 +1,20 @@
 # Open Questions
 
-## Rules
-Сюда попадают только реально не решённые вопросы.
-Если решение принято — переносить в `DECISIONS.md`.
+1. Где лучше хранить текстовую логику:
+   - внутри объекта?
+   - отдельной сущностью (Scenario)?
 
----
+2. Как лучше отображать логику:
+   - в Inspector?
+   - отдельная панель Logic?
+   - гибрид?
 
-## Current open questions
+3. Нужна ли структура у логики:
+   - свободный текст?
+   - или поля: trigger / action / target?
 
-### 1. Class vs Template
-- Что именно означает `className` в v1?
-- Это просто ссылка на шаблон или уже будущий тип наследования?
+4. Нужно ли показывать связи логики визуально (в будущем)?
 
-### 2. Properties typing
-- Насколько строго типизировать custom properties на раннем этапе?
-- Оставляем `Record<string, unknown>` или вводим ограниченный тип значений?
+5. Как отображать "битые" ссылки между объектами и логикой?
 
-### 3. LogicRefs growth path
-- Как later-stage logicRefs будут переходить в logic model?
-- Нужен ли уже сейчас reserved field под event/action shape?
-
-### 4. Hierarchy future UX
-- Когда вводить collapse/expand?
-- Когда вводить filters/search/hidden state?
+6. Нужно ли группировать логику в сценарии (scenes / flows)?
