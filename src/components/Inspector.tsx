@@ -1,0 +1,366 @@
+import React, { useState } from 'react';
+import { useCanvasStore, GameObject, LogicRef } from '../store/useCanvasStore';
+import { Settings, Code, Plus, Trash2 } from 'lucide-react';
+
+export const Inspector: React.FC = () => {
+  const { objects, selectedObjectIds, updateObject } = useCanvasStore();
+  
+  const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
+
+  const [newPropKey, setNewPropKey] = useState('');
+  const [newPropValue, setNewPropValue] = useState('');
+
+  if (!selectedObject) return null;
+
+  const getDescendantIds = (parentId: string): string[] => {
+    const children = objects.filter(o => o.parentId === parentId);
+    return children.reduce((acc, child) => {
+      return [...acc, child.id, ...getDescendantIds(child.id)];
+    }, [] as string[]);
+  };
+
+  const descendantIds = getDescendantIds(selectedObject.id);
+  const validParents = objects.filter(o => 
+    o.id !== selectedObject.id && !descendantIds.includes(o.id)
+  );
+
+  const handleAddProperty = () => {
+    if (!newPropKey.trim()) return;
+    updateObject(selectedObject.id, {
+      properties: {
+        ...selectedObject.properties,
+        [newPropKey]: newPropValue
+      }
+    });
+    setNewPropKey('');
+    setNewPropValue('');
+  };
+
+  const handleUpdatePropertyKey = (oldKey: string, newKey: string) => {
+    if (oldKey === newKey || !newKey.trim()) return;
+    const newProps = { ...selectedObject.properties };
+    newProps[newKey] = newProps[oldKey];
+    delete newProps[oldKey];
+    updateObject(selectedObject.id, { properties: newProps });
+  };
+
+  const handleUpdatePropertyValue = (key: string, value: string) => {
+    updateObject(selectedObject.id, {
+      properties: {
+        ...selectedObject.properties,
+        [key]: value
+      }
+    });
+  };
+
+  const handleRemoveProperty = (key: string) => {
+    const newProps = { ...selectedObject.properties };
+    delete newProps[key];
+    updateObject(selectedObject.id, { properties: newProps });
+  };
+
+  const handleAddLogicRef = () => {
+    const newRef: LogicRef = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: 'New Logic',
+      type: 'client',
+      description: '',
+      enabled: true
+    };
+    updateObject(selectedObject.id, {
+      logicRefs: [...(selectedObject.logicRefs || []), newRef]
+    });
+  };
+
+  const handleUpdateLogicRef = (id: string, updates: Partial<LogicRef>) => {
+    updateObject(selectedObject.id, {
+      logicRefs: selectedObject.logicRefs.map(ref => 
+        ref.id === id ? { ...ref, ...updates } : ref
+      )
+    });
+  };
+
+  const handleRemoveLogicRef = (id: string) => {
+    updateObject(selectedObject.id, {
+      logicRefs: selectedObject.logicRefs.filter(ref => ref.id !== id)
+    });
+  };
+
+  const SectionHeader = ({ title }: { title: string }) => (
+    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, marginTop: 16, fontWeight: 'bold' }}>
+      {title.toUpperCase()}
+    </div>
+  );
+
+  const InputStyle = { width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4, boxSizing: 'border-box' as const };
+  const LabelStyle = { fontSize: 12, color: '#888' };
+
+  return (
+    <div 
+      key={selectedObject.id}
+      className="engine-glass"
+      style={{
+        position: 'absolute',
+        right: 20,
+        top: 20,
+        bottom: 20,
+        width: 320,
+        padding: 20,
+        borderRadius: 12,
+        pointerEvents: 'auto',
+        overflowY: 'auto'
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+        <Settings size={20} />
+        <h3 style={{ margin: 0 }}>Inspector</h3>
+      </div>
+      
+      {/* BASIC Section */}
+      <SectionHeader title="Basic" />
+      <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ flex: 1 }}>
+            <span style={LabelStyle}>NAME</span>
+            <input 
+              type="text" 
+              value={selectedObject.name} 
+              onChange={(e) => updateObject(selectedObject.id, { name: e.target.value })}
+              style={InputStyle}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ flex: 1 }}>
+            <span style={LabelStyle}>TYPE</span>
+            <select 
+              value={selectedObject.type}
+              onChange={(e) => updateObject(selectedObject.id, { type: e.target.value as any })}
+              style={InputStyle}
+            >
+              <option value="box">Box</option>
+              <option value="zone">Zone</option>
+              <option value="unit">Unit</option>
+              <option value="custom">Custom</option>
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <span style={LabelStyle}>CLASS</span>
+            <input 
+              type="text" 
+              value={selectedObject.className || ''} 
+              onChange={(e) => updateObject(selectedObject.id, { className: e.target.value })}
+              placeholder="None"
+              style={InputStyle}
+            />
+          </div>
+        </div>
+
+        <div>
+          <span style={LabelStyle}>PARENT</span>
+          <select 
+            value={selectedObject.parentId || ''}
+            onChange={(e) => updateObject(selectedObject.id, { parentId: e.target.value || null })}
+            style={InputStyle}
+          >
+            <option value="">(No Parent)</option>
+            {validParents.map(o => (
+              <option key={o.id} value={o.id}>{o.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* TRANSFORM Section */}
+      <SectionHeader title="Transform" />
+      <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <span style={LabelStyle}>X</span>
+              <input 
+                type="number" 
+                value={Math.round(selectedObject.transform.x)} 
+                onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, x: Number(e.target.value) } })}
+                style={InputStyle}
+              />
+            </div>
+            <div>
+              <span style={LabelStyle}>Y</span>
+              <input 
+                type="number" 
+                value={Math.round(selectedObject.transform.y)} 
+                onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, y: Number(e.target.value) } })}
+                style={InputStyle}
+              />
+            </div>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <span style={LabelStyle}>ROTATION</span>
+              <input 
+                type="number" 
+                value={selectedObject.transform.rotation || 0} 
+                onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, rotation: Number(e.target.value) } })}
+                style={InputStyle}
+              />
+            </div>
+            <div>
+              <span style={LabelStyle}>SCALE</span>
+              <input 
+                type="number" 
+                value={selectedObject.transform.scaleX || 1} 
+                onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, scaleX: Number(e.target.value), scaleY: Number(e.target.value) } })}
+                style={InputStyle}
+              />
+            </div>
+        </div>
+      </div>
+
+      {/* TAGS Section */}
+      <SectionHeader title="Tags" />
+      <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
+        <span style={LabelStyle}>TAGS (comma separated)</span>
+        <input 
+          type="text" 
+          value={selectedObject.tags?.join(', ') || ''} 
+          onChange={(e) => updateObject(selectedObject.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
+          placeholder="e.g. interactive, solid"
+          style={InputStyle}
+        />
+      </div>
+
+      {/* DESCRIPTION Section */}
+      <SectionHeader title="Description" />
+      <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
+        <textarea 
+          value={selectedObject.description || ''} 
+          onChange={(e) => updateObject(selectedObject.id, { description: e.target.value })}
+          placeholder="Object description..."
+          rows={3}
+          style={{ ...InputStyle, resize: 'vertical' }}
+        />
+      </div>
+
+      {/* CUSTOM PROPERTIES Section */}
+      <SectionHeader title="Custom Properties" />
+      <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
+        {Object.entries(selectedObject.properties || {}).map(([key, value]) => (
+          <div key={key} style={{ display: 'flex', gap: 4, marginBottom: 8, alignItems: 'center' }}>
+            <input 
+              type="text" 
+              defaultValue={key}
+              onBlur={(e) => handleUpdatePropertyKey(key, e.target.value)}
+              style={{ ...InputStyle, marginTop: 0, flex: 1 }}
+              placeholder="Key"
+            />
+            <input 
+              type="text" 
+              value={String(value)}
+              onChange={(e) => handleUpdatePropertyValue(key, e.target.value)}
+              style={{ ...InputStyle, marginTop: 0, flex: 1 }}
+              placeholder="Value"
+            />
+            <button 
+              onClick={() => handleRemoveProperty(key)}
+              style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: 4 }}
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+        ))}
+        <div style={{ display: 'flex', gap: 4, marginTop: 8, alignItems: 'center' }}>
+          <input 
+            type="text" 
+            value={newPropKey}
+            onChange={(e) => setNewPropKey(e.target.value)}
+            style={{ ...InputStyle, marginTop: 0, flex: 1 }}
+            placeholder="New Key"
+          />
+          <input 
+            type="text" 
+            value={newPropValue}
+            onChange={(e) => setNewPropValue(e.target.value)}
+            style={{ ...InputStyle, marginTop: 0, flex: 1 }}
+            placeholder="New Value"
+          />
+          <button 
+            onClick={handleAddProperty}
+            style={{ background: 'var(--accent-color)', border: 'none', color: 'white', borderRadius: 4, cursor: 'pointer', padding: '6px' }}
+          >
+            <Plus size={16} />
+          </button>
+        </div>
+      </div>
+
+      {/* LOGIC REFERENCES Section */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <SectionHeader title="Logic References" />
+        <button 
+          onClick={handleAddLogicRef}
+          style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', borderRadius: 4, cursor: 'pointer', padding: '2px 8px', fontSize: 12, marginBottom: 8 }}
+        >
+          + Add
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {(selectedObject.logicRefs || []).map(ref => (
+          <div key={ref.id} style={{ background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 8, borderLeft: '3px solid #a8b1ff' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <input 
+                type="text" 
+                value={ref.name}
+                onChange={(e) => handleUpdateLogicRef(ref.id, { name: e.target.value })}
+                style={{ ...InputStyle, marginTop: 0, width: '60%', background: 'transparent', padding: 0, fontSize: 14, fontWeight: 'bold' }}
+                placeholder="Logic Name"
+              />
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input 
+                  type="checkbox"
+                  checked={ref.enabled}
+                  onChange={(e) => handleUpdateLogicRef(ref.id, { enabled: e.target.checked })}
+                  title="Enabled"
+                />
+                <button 
+                  onClick={() => handleRemoveLogicRef(ref.id)}
+                  style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: 0 }}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <div style={{ flex: 1 }}>
+                <select 
+                  value={ref.type}
+                  onChange={(e) => handleUpdateLogicRef(ref.id, { type: e.target.value as any })}
+                  style={InputStyle}
+                >
+                  <option value="server">Server</option>
+                  <option value="client">Client</option>
+                  <option value="shared">Shared</option>
+                </select>
+              </div>
+            </div>
+
+            <textarea 
+              value={ref.description || ''}
+              onChange={(e) => handleUpdateLogicRef(ref.id, { description: e.target.value })}
+              style={{ ...InputStyle, resize: 'vertical' }}
+              placeholder="Logic description..."
+              rows={2}
+            />
+          </div>
+        ))}
+        {(!selectedObject.logicRefs || selectedObject.logicRefs.length === 0) && (
+          <div style={{ fontSize: 12, color: '#888', textAlign: 'center', padding: '10px 0' }}>
+            No logic references attached.
+          </div>
+        )}
+      </div>
+
+      <div style={{ height: 40 }} /> {/* Bottom padding */}
+    </div>
+  );
+};

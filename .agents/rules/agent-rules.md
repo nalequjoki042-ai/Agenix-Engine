@@ -22,7 +22,6 @@ trigger: always_on
 3. `.agents/workflows/CURRENT_TASK.md`
 4. при необходимости:
    - `.agents/_agent_docs/ARCHITECTURE.md`
-   - `.agents/_agent_docs/DECISIONS.md`
    - `.agents/_agent_docs/OPEN_QUESTIONS.md`
    - `.agents/_agent_docs/ENGINE_LOG.md`
 
@@ -54,6 +53,7 @@ trigger: always_on
 3. Что именно работает теперь
 4. Что сознательно НЕ делалось
 5. Есть ли риски / открытые моменты
+6. Заполнить ( C:\Users\user\Documents\Program\28.03\Agenix\.agents\_agent_docs\ENGINE_LOG.md ) ! 
 
 ---
 

@@ -4,6 +4,8 @@ import { useUIStore } from './store/useUIStore'
 import { useCanvasStore } from './store/useCanvasStore'
 import { Box, Play, Download, Square, Code, Settings, ListTree, User, Hexagon } from 'lucide-react'
 
+import { Inspector } from './components/Inspector'
+
 function App() {
   const { contextMenu, closeContextMenu } = useUIStore()
   const { addObject, selectedObjectIds, objects, updateObject, selectObject } = useCanvasStore()
@@ -153,147 +155,7 @@ function App() {
         </div>
 
         {/* Properties Panel (Right side) */}
-        {selectedObject && (
-          <div 
-            className="engine-glass"
-            style={{
-              position: 'absolute',
-              right: 20,
-              top: 20,
-              bottom: 20,
-              width: 320,
-              padding: 20,
-              borderRadius: 12,
-              pointerEvents: 'auto',
-              overflowY: 'auto'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-              <Settings size={20} />
-              <h3 style={{ margin: 0 }}>Inspector</h3>
-            </div>
-            
-            {/* General Section */}
-            <div style={{ marginBottom: 20 }}>
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 12, color: '#888' }}>NAME</span>
-                  <input 
-                    type="text" 
-                    value={selectedObject.name} 
-                    onChange={(e) => updateObject(selectedObject.id, { name: e.target.value })}
-                    style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 12, color: '#888' }}>TYPE</span>
-                  <select 
-                    value={selectedObject.type}
-                    onChange={(e) => updateObject(selectedObject.id, { type: e.target.value as any })}
-                    style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                  >
-                    <option value="box">Box</option>
-                    <option value="zone">Zone</option>
-                    <option value="unit">Unit</option>
-                    <option value="custom">Custom</option>
-                  </select>
-                </div>
-                <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 12, color: '#888' }}>CLASS</span>
-                  <input 
-                    type="text" 
-                    value={selectedObject.className || ''} 
-                    onChange={(e) => updateObject(selectedObject.id, { className: e.target.value })}
-                    placeholder="None"
-                    style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                  />
-                </div>
-              </div>
-              
-              <div style={{ marginBottom: 12 }}>
-                <span style={{ fontSize: 12, color: '#888' }}>TAGS (comma separated)</span>
-                <input 
-                  type="text" 
-                  value={selectedObject.tags.join(', ')} 
-                  onChange={(e) => updateObject(selectedObject.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
-                  placeholder="e.g. interactive, solid"
-                  style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                />
-              </div>
-
-              <div style={{ marginBottom: 12 }}>
-                <span style={{ fontSize: 12, color: '#888' }}>PARENT ID</span>
-                <select 
-                  value={selectedObject.parentId || ''}
-                  onChange={(e) => updateObject(selectedObject.id, { parentId: e.target.value || null })}
-                  style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                >
-                  <option value="">(No Parent)</option>
-                  {validParents.map(o => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Transform Section */}
-            <div style={{ background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 8, marginBottom: 16 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, fontWeight: 'bold' }}>TRANSFORM</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
-                 <div>
-                   <span style={{ fontSize: 12, color: '#888' }}>X:</span>
-                   <input 
-                     type="number" 
-                     value={Math.round(selectedObject.transform.x)} 
-                     onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, x: Number(e.target.value) } })}
-                     style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                   />
-                 </div>
-                 <div>
-                   <span style={{ fontSize: 12, color: '#888' }}>Y:</span>
-                   <input 
-                     type="number" 
-                     value={Math.round(selectedObject.transform.y)} 
-                     onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, y: Number(e.target.value) } })}
-                     style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                   />
-                 </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                 <div>
-                   <span style={{ fontSize: 12, color: '#888' }}>ROTATION:</span>
-                   <input 
-                     type="number" 
-                     value={selectedObject.transform.rotation || 0} 
-                     onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, rotation: Number(e.target.value) } })}
-                     style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                   />
-                 </div>
-                 <div>
-                   <span style={{ fontSize: 12, color: '#888' }}>SCALE:</span>
-                   <input 
-                     type="number" 
-                     value={selectedObject.transform.scaleX || 1} 
-                     onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, scaleX: Number(e.target.value), scaleY: Number(e.target.value) } })}
-                     style={{ width: '100%', padding: '6px', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, color: 'white', marginTop: 4 }}
-                   />
-                 </div>
-              </div>
-            </div>
-
-            {/* AI Core Component (Placeholder for later) */}
-            <div style={{ marginTop: 24 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, color: '#a8b1ff' }}>
-                <Code size={16} />
-                <span style={{ fontSize: 12, fontWeight: 'bold', letterSpacing: 1 }}>LOGIC & BEHAVIOR (Coming Soon)</span>
-              </div>
-            </div>
-
-          </div>
-        )}
+        <Inspector />
 
         {/* Dynamic Context Menu */}
         {contextMenu && contextMenu.isOpen && (
