@@ -1,0 +1,18 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true,
+    "**/node_modules": true,
+    "package.json": true,
+    "package-lock.json": true,
+    "tsconfig.json": true,
+    "tsconfig.node.json": true,
+    "vite.config.ts": true,
+    ".vscode": true,
+    ".eslintrc.cjs": true,
+    "README.md": true
+  },
+  "files.readonly": {
+    "_agent_docs/ARCHITECTURE.md": true
+  }
+}
