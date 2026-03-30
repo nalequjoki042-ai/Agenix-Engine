@@ -1,5 +1,6 @@
 import { GameObject } from '../store/useCanvasStore';
 import { LogicTextItem } from '../types/logic';
+import { ObjectClass } from '../types/objectClass';
 
 export interface SceneImportReport {
   total: number;
@@ -11,12 +12,16 @@ export interface SceneImportReport {
   logicTotal: number;
   logicValid: number;
   logicDiscarded: number;
+  classesTotal: number;
+  classesValid: number;
+  classesDiscarded: number;
   danglingRefsRemoved?: number;
 }
 
 export interface ValidationResult {
   objects: GameObject[];
   logicItems: LogicTextItem[];
+  objectClasses: ObjectClass[];
   report: SceneImportReport;
 }
 
@@ -42,30 +47,43 @@ export const validateLogicItem = (item: any): item is LogicTextItem => {
   return true;
 };
 
+export const validateObjectClass = (cls: any): cls is ObjectClass => {
+  if (!cls || typeof cls !== 'object') return false;
+  if (typeof cls.id !== 'string' || cls.id.trim() === '') return false;
+  if (typeof cls.name !== 'string') return false;
+  if (typeof cls.description !== 'string') return false;
+  if (!['box', 'zone', 'unit', 'custom'].includes(cls.baseType)) return false;
+  if (!Array.isArray(cls.defaultTags)) return false;
+  if (!cls.defaultProperties || typeof cls.defaultProperties !== 'object') return false;
+  if (typeof cls.defaultDescription !== 'string') return false;
+  return true;
+};
+
 /**
  * Extracts objects array and logicItems array from parsed JSON.
  * Supports two formats:
  * - Old format: GameObject[] (just an array)
- * - New format: { objects: GameObject[], logicItems?: LogicTextItem[] }
+ * - New format: { objects: GameObject[], logicItems?: LogicTextItem[], objectClasses?: ObjectClass[] }
  */
-const extractSceneData = (data: any): { objectsRaw: any[]; logicRaw: any[] } => {
+const extractSceneData = (data: any): { objectsRaw: any[]; logicRaw: any[]; classesRaw: any[] } => {
   // New format: object with `objects` property
   if (data && typeof data === 'object' && !Array.isArray(data) && Array.isArray(data.objects)) {
     return {
       objectsRaw: data.objects,
-      logicRaw: Array.isArray(data.logicItems) ? data.logicItems : []
+      logicRaw: Array.isArray(data.logicItems) ? data.logicItems : [],
+      classesRaw: Array.isArray(data.objectClasses) ? data.objectClasses : []
     };
   }
   // Old format: plain array
   if (Array.isArray(data)) {
     console.info('[Agenix Import] Legacy format detected (GameObject array). Converting to current structure.');
-    return { objectsRaw: data, logicRaw: [] };
+    return { objectsRaw: data, logicRaw: [], classesRaw: [] };
   }
   throw new Error('Scene data must be an array of objects or an object with "objects" property.');
 };
 
 export const validateAndFilterScene = (data: any): ValidationResult => {
-  const { objectsRaw, logicRaw } = extractSceneData(data);
+  const { objectsRaw, logicRaw, classesRaw } = extractSceneData(data);
 
   const report: SceneImportReport = {
     total: objectsRaw.length,
@@ -76,7 +94,10 @@ export const validateAndFilterScene = (data: any): ValidationResult => {
     brokenChildren: [],
     logicTotal: logicRaw.length,
     logicValid: 0,
-    logicDiscarded: 0
+    logicDiscarded: 0,
+    classesTotal: classesRaw.length,
+    classesValid: 0,
+    classesDiscarded: 0
   };
 
   const idMap = new Set<string>();
@@ -131,8 +152,25 @@ export const validateAndFilterScene = (data: any): ValidationResult => {
     }
   });
 
+  // Step 3.5: Validate objectClasses
+  const validObjectClasses: ObjectClass[] = [];
+  const classIdSet = new Set<string>();
+  classesRaw.forEach((cls: any) => {
+    if (validateObjectClass(cls)) {
+      if (classIdSet.has(cls.id)) {
+        report.classesDiscarded++;
+      } else {
+        classIdSet.add(cls.id);
+        validObjectClasses.push(cls);
+      }
+    } else {
+      report.classesDiscarded++;
+    }
+  });
+
   report.valid = basicValidObjects.length;
   report.logicValid = validLogicItems.length;
+  report.classesValid = validObjectClasses.length;
 
   // Step 4: Sanitize logicItems — remove relatedObjectIds that point to non-existent objects
   const objectIdSet = new Set(basicValidObjects.map(o => o.id));
@@ -154,6 +192,7 @@ export const validateAndFilterScene = (data: any): ValidationResult => {
   return {
     objects: basicValidObjects,
     logicItems: sanitizedLogicItems,
+    objectClasses: validObjectClasses,
     report
   };
 };

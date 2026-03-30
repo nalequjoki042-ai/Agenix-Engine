@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { LogicTextItem } from '../types/logic'
+import { ObjectClass } from '../types/objectClass'
 
 export type LogicRef = {
   id: string;
@@ -13,7 +14,8 @@ export type GameObject = {
   id: string;
   name: string;
   type: 'box' | 'zone' | 'unit' | 'custom';
-  className?: string;
+  className?: string; // legacy or stylistic class name
+  classId: string | null;
 
   parentId: string | null;
   childrenIds: string[];
@@ -45,6 +47,7 @@ interface CanvasState {
   camera: { x: number; y: number; scale: number }
   logicItems: LogicTextItem[]
   selectedLogicItemId: string | null
+  objectClasses: ObjectClass[]
   
   // Actions
   addObject: (obj: GameObject) => void
@@ -54,13 +57,20 @@ interface CanvasState {
   selectLogicItem: (id: string | null) => void
   setCamera: (camera: Partial<CanvasState['camera']>) => void
   setObjects: (objects: GameObject[]) => void
-  setScene: (objects: GameObject[], logicItems: LogicTextItem[]) => void
+  setScene: (objects: GameObject[], logicItems: LogicTextItem[], objectClasses?: ObjectClass[]) => void
 
   addLogicItem: (input?: Partial<LogicTextItem>) => void
   updateLogicItem: (id: string, patch: Partial<LogicTextItem>) => void
   deleteLogicItem: (id: string) => void
   linkLogicToObject: (logicId: string, objectId: string) => void
   unlinkLogicFromObject: (logicId: string, objectId: string) => void
+
+  // Object Class Actions
+  createObjectClass: (input?: Partial<ObjectClass>) => void
+  updateObjectClass: (id: string, patch: Partial<ObjectClass>) => void
+  deleteObjectClass: (id: string) => void
+  assignClassToObject: (objectId: string, classId: string) => void
+  unassignClassFromObject: (objectId: string) => void
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
@@ -69,6 +79,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   camera: { x: 0, y: 0, scale: 1 },
   logicItems: [],
   selectedLogicItemId: null,
+  objectClasses: [],
 
   addObject: (obj) => set((state) => ({ objects: [...state.objects, obj] })),
   
@@ -111,9 +122,10 @@ export const useCanvasStore = create<CanvasState>((set) => ({
 
   setObjects: (objects) => set({ objects, selectedObjectIds: [] }),
 
-  setScene: (objects, logicItems) => set({
+  setScene: (objects, logicItems, objectClasses = []) => set({
     objects,
     logicItems,
+    objectClasses,
     selectedObjectIds: [],
     selectedLogicItemId: null
   }),
@@ -162,5 +174,43 @@ export const useCanvasStore = create<CanvasState>((set) => ({
       }
       return item;
     })
+  })),
+
+  createObjectClass: (input) => set((state) => {
+    const newClass: ObjectClass = {
+      id: input?.id || crypto.randomUUID(),
+      name: input?.name || 'New Object Class',
+      description: input?.description || '',
+      baseType: input?.baseType || 'box',
+      defaultTags: input?.defaultTags ? [...new Set(input.defaultTags)] : [],
+      defaultProperties: input?.defaultProperties || {},
+      defaultDescription: input?.defaultDescription || '',
+    };
+    return { objectClasses: [...state.objectClasses, newClass] };
+  }),
+
+  updateObjectClass: (id, patch) => set((state) => ({
+    objectClasses: state.objectClasses.map(cls =>
+      cls.id === id ? { ...cls, ...patch } : cls
+    )
+  })),
+
+  deleteObjectClass: (id) => set((state) => ({
+    objectClasses: state.objectClasses.filter(cls => cls.id !== id),
+    objects: state.objects.map(obj => 
+      obj.classId === id ? { ...obj, classId: null } : obj
+    )
+  })),
+
+  assignClassToObject: (objectId, classId) => set((state) => ({
+    objects: state.objects.map(obj => 
+      obj.id === objectId ? { ...obj, classId } : obj
+    )
+  })),
+
+  unassignClassFromObject: (objectId) => set((state) => ({
+    objects: state.objects.map(obj => 
+      obj.id === objectId ? { ...obj, classId: null } : obj
+    )
   }))
 }))

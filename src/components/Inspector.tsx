@@ -3,7 +3,7 @@ import { useCanvasStore, LogicRef } from '../store/useCanvasStore';
 import { Settings, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
 
 export const Inspector: React.FC = () => {
-  const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject } = useCanvasStore();
+  const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject, objectClasses } = useCanvasStore();
   
   const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
 
@@ -169,16 +169,19 @@ export const Inspector: React.FC = () => {
             </select>
           </div>
           <div style={{ flex: 1 }}>
-            <span style={LabelStyle}>CLASS</span>
-            <input 
-              id="obj-class"
-              name="objectClass"
-              type="text" 
-              value={selectedObject.className || ''} 
-              onChange={(e) => updateObject(selectedObject.id, { className: e.target.value })}
-              placeholder="None"
+            <span style={LabelStyle}>CLASS ID</span>
+            <select 
+              id="obj-class-id"
+              name="objectClassId"
+              value={selectedObject.classId || ''} 
+              onChange={(e) => updateObject(selectedObject.id, { classId: e.target.value || null })}
               style={InputStyle}
-            />
+            >
+              <option value="">None</option>
+              {objectClasses.map(cls => (
+                <option key={cls.id} value={cls.id}>{cls.name}</option>
+              ))}
+            </select>
           </div>
         </div>
 

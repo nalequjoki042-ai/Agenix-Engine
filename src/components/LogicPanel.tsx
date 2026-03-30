@@ -25,7 +25,7 @@ export const LogicPanel: React.FC = () => {
       // 1. Search filter
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const matchesSearch = 
+        const matchesSearch =
           item.title.toLowerCase().includes(q) ||
           item.text.toLowerCase().includes(q) ||
           (item.notes || '').toLowerCase().includes(q) ||
@@ -67,20 +67,20 @@ export const LogicPanel: React.FC = () => {
     if (selectedLogicItemId === id) selectLogicItem(null);
   };
 
-  const InputStyle = { 
-    width: '100%', 
-    padding: '6px', 
-    background: 'rgba(255,255,255,0.1)', 
-    border: 'none', 
-    borderRadius: 4, 
-    color: 'white', 
-    marginTop: 4, 
-    boxSizing: 'border-box' as const 
+  const InputStyle = {
+    width: '100%',
+    padding: '6px',
+    background: 'rgba(255,255,255,0.1)',
+    border: 'none',
+    borderRadius: 4,
+    color: 'white',
+    marginTop: 4,
+    boxSizing: 'border-box' as const
   };
   const LabelStyle = { fontSize: 12, color: '#888' };
 
   return (
-    <div 
+    <div
       className="engine-glass"
       style={{
         position: 'absolute',
@@ -89,7 +89,7 @@ export const LogicPanel: React.FC = () => {
         bottom: 20,
         height: 350,
         padding: 20,
-        borderRadius: 12,
+        borderRadius: '0 12px 12px 12px',
         pointerEvents: 'auto',
         display: 'flex',
         gap: 20
@@ -109,17 +109,17 @@ export const LogicPanel: React.FC = () => {
 
         {/* FILTERS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <input 
+          <input
             id="logic-search"
             name="logicSearch"
-            type="text" 
-            placeholder="Search..." 
+            type="text"
+            placeholder="Search..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             style={{ ...InputStyle, marginTop: 0 }}
           />
           <div style={{ display: 'flex', gap: 4 }}>
-            <select 
+            <select
               id="logic-filter-enabled"
               name="logicFilterEnabled"
               value={enabledFilter}
@@ -130,7 +130,7 @@ export const LogicPanel: React.FC = () => {
               <option value="enabled" style={{ color: 'black' }}>Enabled</option>
               <option value="disabled" style={{ color: 'black' }}>Disabled</option>
             </select>
-            <select 
+            <select
               id="logic-filter-tag"
               name="logicFilterTag"
               value={tagFilter}
@@ -141,7 +141,7 @@ export const LogicPanel: React.FC = () => {
               {availableTags.map(tag => <option key={tag} value={tag} style={{ color: 'black' }}>{tag}</option>)}
             </select>
           </div>
-          <select 
+          <select
             id="logic-filter-object"
             name="logicFilterObject"
             value={objectFilter}
@@ -152,7 +152,7 @@ export const LogicPanel: React.FC = () => {
             {objects.map(obj => <option key={obj.id} value={obj.id} style={{ color: 'black' }}>{obj.name}</option>)}
           </select>
           {hasActiveFilters && (
-            <button 
+            <button
               onClick={resetFilters}
               style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#ff6b6b', borderRadius: 4, cursor: 'pointer', padding: '4px', fontSize: 12 }}
             >
@@ -168,7 +168,7 @@ export const LogicPanel: React.FC = () => {
             <div style={{ fontSize: 14, color: '#888', marginTop: 10 }}>No rules match filters.</div>
           ) : (
             filteredItems.map(item => (
-              <div 
+              <div
                 key={item.id}
                 onClick={() => selectLogicItem(item.id)}
                 style={{
@@ -190,7 +190,7 @@ export const LogicPanel: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                   style={{ background: 'transparent', border: 'none', color: selectedLogicItemId === item.id ? 'white' : '#ff6b6b', cursor: 'pointer', padding: 0, flexShrink: 0, marginLeft: 8 }}
                 >
@@ -211,20 +211,20 @@ export const LogicPanel: React.FC = () => {
               <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                   <span style={LabelStyle}>TITLE</span>
-                  <input 
+                  <input
                     id="logic-title"
                     name="logicTitle"
-                    type="text" 
-                    value={selectedItem.title} 
+                    type="text"
+                    value={selectedItem.title}
                     onChange={e => updateLogicItem(selectedItem.id, { title: e.target.value })}
                     style={InputStyle}
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
-                  <input 
+                  <input
                     id="logic-enabled"
                     name="logicEnabled"
-                    type="checkbox" 
+                    type="checkbox"
                     checked={selectedItem.enabled}
                     onChange={e => updateLogicItem(selectedItem.id, { enabled: e.target.checked })}
                   />
@@ -234,10 +234,10 @@ export const LogicPanel: React.FC = () => {
 
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <span style={LabelStyle}>LOGIC TEXT (RUSSIAN SUPPORTED)</span>
-                <textarea 
+                <textarea
                   id="logic-text"
                   name="logicText"
-                  value={selectedItem.text} 
+                  value={selectedItem.text}
                   onChange={e => updateLogicItem(selectedItem.id, { text: e.target.value })}
                   style={{ ...InputStyle, flex: 1, resize: 'none', fontFamily: 'monospace' }}
                   placeholder="Опишите логику здесь..."
@@ -247,11 +247,11 @@ export const LogicPanel: React.FC = () => {
               <div style={{ display: 'flex', gap: 12 }}>
                 <div style={{ flex: 1 }}>
                   <span style={LabelStyle}>TAGS (comma separated)</span>
-                  <input 
+                  <input
                     id="logic-tags"
                     name="logicTags"
-                    type="text" 
-                    value={selectedItem.tags?.join(', ') || ''} 
+                    type="text"
+                    value={selectedItem.tags?.join(', ') || ''}
                     onChange={e => updateLogicItem(selectedItem.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
                     style={InputStyle}
                     placeholder="e.g. combat, dialogue"
@@ -259,11 +259,11 @@ export const LogicPanel: React.FC = () => {
                 </div>
                 <div style={{ flex: 1 }}>
                   <span style={LabelStyle}>NOTES</span>
-                  <input 
+                  <input
                     id="logic-notes"
                     name="logicNotes"
-                    type="text" 
-                    value={selectedItem.notes || ''} 
+                    type="text"
+                    value={selectedItem.notes || ''}
                     onChange={e => updateLogicItem(selectedItem.id, { notes: e.target.value })}
                     style={InputStyle}
                     placeholder="Internal notes..."
@@ -282,7 +282,7 @@ export const LogicPanel: React.FC = () => {
                   objects.map(obj => {
                     const isLinked = selectedItem.relatedObjectIds.includes(obj.id);
                     return (
-                      <div 
+                      <div
                         key={obj.id}
                         onClick={() => {
                           if (isLinked) unlinkLogicFromObject(selectedItem.id, obj.id);

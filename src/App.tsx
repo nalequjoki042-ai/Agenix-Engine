@@ -1,23 +1,24 @@
-import { useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { EngineCanvas } from './components/canvas/EngineCanvas'
 import { useUIStore } from './store/useUIStore'
 import { useCanvasStore } from './store/useCanvasStore'
-import { Box, Play, Download, Upload, Square, ListTree, User, Hexagon } from 'lucide-react'
+import { Box, Play, Download, Upload, Square, ListTree, User, Hexagon, FileText, Library } from 'lucide-react'
 
 import { Inspector } from './components/Inspector'
 import { LogicPanel } from './components/LogicPanel'
+import { ClassPanel } from './components/ClassPanel'
 
 import { validateAndFilterScene } from './utils/sceneValidation'
 
 function App() {
+  const [activeBottomPanel, setActiveBottomPanel] = useState<'logic' | 'classes'>('logic')
   const { contextMenu, closeContextMenu } = useUIStore()
-  const { addObject, selectedObjectIds, objects, selectObject, setScene, logicItems } = useCanvasStore()
+  const { addObject, selectedObjectIds, objects, selectObject, setScene, logicItems, objectClasses } = useCanvasStore()
   
-
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleExport = () => {
-    const sceneData = { objects, logicItems }
+    const sceneData = { objects, logicItems, objectClasses }
     const data = JSON.stringify(sceneData, null, 2)
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -42,11 +43,12 @@ function App() {
         const json = event.target?.result as string
         const parsed = JSON.parse(json)
         
-        const { objects: validObjects, logicItems: validLogicItems, report } = validateAndFilterScene(parsed)
+        const { objects: validObjects, logicItems: validLogicItems, objectClasses: validObjectClasses, report } = validateAndFilterScene(parsed)
         
-        console.groupCollapsed(`[Agenix Import] Scene imported: ${report.valid} objects, ${report.logicValid} logic rules`);
+        console.groupCollapsed(`[Agenix Import] Scene imported: ${report.valid} objects, ${report.logicValid} logic rules, ${report.classesValid} classes`);
         if (report.discarded > 0) console.warn(`[Agenix Import] Discarded invalid objects: ${report.discarded}`);
         if (report.logicDiscarded > 0) console.warn(`[Agenix Import] Discarded invalid logic items: ${report.logicDiscarded}`);
+        if (report.classesDiscarded > 0) console.warn(`[Agenix Import] Discarded invalid classes: ${report.classesDiscarded}`);
         if (report.danglingRefsRemoved) {
           console.info(`[Agenix Cleanup] Removed ${report.danglingRefsRemoved} broken logic links during sanitization.`);
         }
@@ -63,12 +65,12 @@ function App() {
         
         console.groupEnd();
 
-        setScene(validObjects, validLogicItems);
+        setScene(validObjects, validLogicItems, validObjectClasses);
         
         // Show a brief summary to user
-        const hasWarnings = report.discarded > 0 || report.logicDiscarded > 0 || report.brokenParents.length > 0 || report.brokenChildren.length > 0 || (report.danglingRefsRemoved ?? 0) > 0;
+        const hasWarnings = report.discarded > 0 || report.logicDiscarded > 0 || report.classesDiscarded > 0 || report.brokenParents.length > 0 || report.brokenChildren.length > 0 || (report.danglingRefsRemoved ?? 0) > 0;
         if (hasWarnings) {
-          alert(`Import successful with warnings. Check console for details.\n- Valid objects: ${report.valid}\n- Discarded objects: ${report.discarded}\n- Valid logic items: ${report.logicValid}\n- Discarded logic items: ${report.logicDiscarded}${report.danglingRefsRemoved ? `\n- Dangling refs cleaned: ${report.danglingRefsRemoved}` : ''}`);
+          alert(`Import successful with warnings. Check console for details.\n- Valid objects: ${report.valid}\n- Discarded objects: ${report.discarded}\n- Valid logic items: ${report.logicValid}\n- Discarded logic items: ${report.logicDiscarded}\n- Valid classes: ${report.classesValid}\n- Discarded classes: ${report.classesDiscarded}${report.danglingRefsRemoved ? `\n- Dangling refs cleaned: ${report.danglingRefsRemoved}` : ''}`);
         }
       } catch (err: any) {
         console.error('Failed to import scene', err)
@@ -98,6 +100,7 @@ function App() {
       id,
       name,
       type,
+      classId: null,
       parentId: null,
       childrenIds: [],
       tags: [],
@@ -225,7 +228,50 @@ function App() {
         {/* Properties Panel (Right side) */}
         <Inspector />
 
-        <LogicPanel />
+        <div style={{ position: 'absolute', bottom: 370, left: 300, display: 'flex', gap: 2, pointerEvents: 'auto', zIndex: 10 }}>
+          <button 
+            onClick={() => setActiveBottomPanel('logic')} 
+            style={{ 
+              background: activeBottomPanel === 'logic' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.3)', 
+              backdropFilter: 'blur(10px)',
+              padding: '8px 16px', 
+              borderRadius: '8px 8px 0 0', 
+              border: 'none', 
+              color: activeBottomPanel === 'logic' ? 'white' : '#888', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 14,
+              fontWeight: activeBottomPanel === 'logic' ? 'bold' : 'normal',
+              borderBottom: activeBottomPanel === 'logic' ? '2px solid var(--accent-color)' : 'none'
+            }}
+          >
+            <FileText size={16} /> Logic Rules
+          </button>
+          <button 
+            onClick={() => setActiveBottomPanel('classes')} 
+            style={{ 
+              background: activeBottomPanel === 'classes' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.3)', 
+              backdropFilter: 'blur(10px)',
+              padding: '8px 16px', 
+              borderRadius: '8px 8px 0 0', 
+              border: 'none', 
+              color: activeBottomPanel === 'classes' ? 'white' : '#888', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 14,
+              fontWeight: activeBottomPanel === 'classes' ? 'bold' : 'normal',
+              borderBottom: activeBottomPanel === 'classes' ? '2px solid var(--accent-color)' : 'none'
+            }}
+          >
+            <Library size={16} /> Object Classes
+          </button>
+        </div>
+
+        {activeBottomPanel === 'logic' ? <LogicPanel /> : <ClassPanel />}
 
         {/* Dynamic Context Menu */}
         {contextMenu && contextMenu.isOpen && (
