@@ -11,14 +11,15 @@ import { validateAndFilterScene } from './utils/sceneValidation'
 
 function App() {
   const { contextMenu, closeContextMenu } = useUIStore()
-  const { addObject, selectedObjectIds, objects, updateObject, selectObject, setObjects } = useCanvasStore()
+  const { addObject, selectedObjectIds, objects, updateObject, selectObject, setScene, logicItems } = useCanvasStore()
   
   const selectedObject = objects.find(o => o.id === selectedObjectIds[0])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleExport = () => {
-    const data = JSON.stringify(objects, null, 2)
+    const sceneData = { objects, logicItems }
+    const data = JSON.stringify(sceneData, null, 2)
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -42,12 +43,18 @@ function App() {
         const json = event.target?.result as string
         const parsed = JSON.parse(json)
         
-        const { objects: validObjects, report } = validateAndFilterScene(parsed)
+        const { objects: validObjects, logicItems: validLogicItems, report } = validateAndFilterScene(parsed)
         
         console.group('Scene Import Report')
         console.log(`Total objects: ${report.total}`)
         console.log(`Valid objects: ${report.valid}`)
-        console.log(`Discarded (malformed or duplicate IDs): ${report.discarded}`)
+        console.log(`Discarded objects: ${report.discarded}`)
+        console.log(`Total logic items: ${report.logicTotal}`)
+        console.log(`Valid logic items: ${report.logicValid}`)
+        console.log(`Discarded logic items: ${report.logicDiscarded}`)
+        if (report.danglingRefsRemoved) {
+          console.warn(`Dangling relatedObjectIds removed: ${report.danglingRefsRemoved}`)
+        }
         
         if (report.duplicateIds.length > 0) {
           console.warn('Duplicate IDs found:', report.duplicateIds)
@@ -62,11 +69,12 @@ function App() {
         }
         console.groupEnd()
 
-        setObjects(validObjects)
+        setScene(validObjects, validLogicItems)
         
         // Show a brief summary to user
-        if (report.discarded > 0 || report.brokenParents.length > 0 || report.brokenChildren.length > 0) {
-          alert(`Import successful with warnings. Check console for details.\n- Valid: ${report.valid}\n- Discarded: ${report.discarded}`)
+        const hasWarnings = report.discarded > 0 || report.logicDiscarded > 0 || report.brokenParents.length > 0 || report.brokenChildren.length > 0 || (report.danglingRefsRemoved ?? 0) > 0
+        if (hasWarnings) {
+          alert(`Import successful with warnings. Check console for details.\n- Valid objects: ${report.valid}\n- Discarded objects: ${report.discarded}\n- Valid logic items: ${report.logicValid}\n- Discarded logic items: ${report.logicDiscarded}${report.danglingRefsRemoved ? `\n- Dangling refs cleaned: ${report.danglingRefsRemoved}` : ''}`)
         }
       } catch (err: any) {
         console.error('Failed to import scene', err)

@@ -54,6 +54,7 @@ interface CanvasState {
   selectLogicItem: (id: string | null) => void
   setCamera: (camera: Partial<CanvasState['camera']>) => void
   setObjects: (objects: GameObject[]) => void
+  setScene: (objects: GameObject[], logicItems: LogicTextItem[]) => void
 
   addLogicItem: (input?: Partial<LogicTextItem>) => void
   updateLogicItem: (id: string, patch: Partial<LogicTextItem>) => void
@@ -76,11 +77,24 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   })),
 
   removeObject: (id) => set((state) => {
-    // Also remove from children of its parent? We can keep it simple for now, 
-    // but a proper cleanup would be better. Let's keep it simple for this store action.
+    // Clean up relatedObjectIds in all logicItems when an object is deleted.
+    // The logicItem itself is NOT deleted even if relatedObjectIds becomes empty.
+    const cleanedLogicItems = state.logicItems.map(item => {
+      if (item.relatedObjectIds.includes(id)) {
+        return { ...item, relatedObjectIds: item.relatedObjectIds.filter(oid => oid !== id) };
+      }
+      return item;
+    });
+
+    const hadDanglingRefs = cleanedLogicItems.some((item, i) => item !== state.logicItems[i]);
+    if (hadDanglingRefs) {
+      console.warn(`[Agenix] Object "${id}" removed — cleaned relatedObjectIds in logicItems.`);
+    }
+
     return {
       objects: state.objects.filter(o => o.id !== id),
-      selectedObjectIds: state.selectedObjectIds.filter(selId => selId !== id)
+      selectedObjectIds: state.selectedObjectIds.filter(selId => selId !== id),
+      logicItems: cleanedLogicItems
     };
   }),
 
@@ -97,6 +111,13 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   })),
 
   setObjects: (objects) => set({ objects, selectedObjectIds: [] }),
+
+  setScene: (objects, logicItems) => set({
+    objects,
+    logicItems,
+    selectedObjectIds: [],
+    selectedLogicItemId: null
+  }),
 
   addLogicItem: (input) => set((state) => {
     const newLogic: LogicTextItem = {

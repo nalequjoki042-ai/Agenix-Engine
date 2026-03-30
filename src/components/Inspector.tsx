@@ -3,7 +3,7 @@ import { useCanvasStore, GameObject, LogicRef } from '../store/useCanvasStore';
 import { Settings, Code, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
 
 export const Inspector: React.FC = () => {
-  const { objects, selectedObjectIds, updateObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject } = useCanvasStore();
+  const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject } = useCanvasStore();
   
   const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
 
@@ -125,7 +125,14 @@ export const Inspector: React.FC = () => {
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <Settings size={20} />
-        <h3 style={{ margin: 0 }}>Inspector</h3>
+        <h3 style={{ margin: 0, flex: 1 }}>Inspector</h3>
+        <button 
+          onClick={() => { if (confirm(`Delete "${selectedObject.name}"?`)) removeObject(selectedObject.id); }}
+          style={{ background: 'transparent', border: '1px solid rgba(255,100,100,0.4)', color: '#ff6b6b', borderRadius: 4, cursor: 'pointer', padding: '4px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}
+          title="Delete object"
+        >
+          <Trash2 size={14} /> Delete
+        </button>
       </div>
       
       {/* BASIC Section */}
