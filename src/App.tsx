@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { EngineCanvas } from './components/canvas/EngineCanvas'
 import { useUIStore } from './store/useUIStore'
 import { useCanvasStore } from './store/useCanvasStore'
-import { Box, Play, Download, Upload, Square, Code, Settings, ListTree, User, Hexagon } from 'lucide-react'
+import { Box, Play, Download, Upload, Square, ListTree, User, Hexagon } from 'lucide-react'
 
 import { Inspector } from './components/Inspector'
 import { LogicPanel } from './components/LogicPanel'
@@ -11,9 +11,8 @@ import { validateAndFilterScene } from './utils/sceneValidation'
 
 function App() {
   const { contextMenu, closeContextMenu } = useUIStore()
-  const { addObject, selectedObjectIds, objects, updateObject, selectObject, setScene, logicItems } = useCanvasStore()
+  const { addObject, selectedObjectIds, objects, selectObject, setScene, logicItems } = useCanvasStore()
   
-  const selectedObject = objects.find(o => o.id === selectedObjectIds[0])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -45,36 +44,31 @@ function App() {
         
         const { objects: validObjects, logicItems: validLogicItems, report } = validateAndFilterScene(parsed)
         
-        console.group('Scene Import Report')
-        console.log(`Total objects: ${report.total}`)
-        console.log(`Valid objects: ${report.valid}`)
-        console.log(`Discarded objects: ${report.discarded}`)
-        console.log(`Total logic items: ${report.logicTotal}`)
-        console.log(`Valid logic items: ${report.logicValid}`)
-        console.log(`Discarded logic items: ${report.logicDiscarded}`)
+        console.groupCollapsed(`[Agenix Import] Scene imported: ${report.valid} objects, ${report.logicValid} logic rules`);
+        if (report.discarded > 0) console.warn(`[Agenix Import] Discarded invalid objects: ${report.discarded}`);
+        if (report.logicDiscarded > 0) console.warn(`[Agenix Import] Discarded invalid logic items: ${report.logicDiscarded}`);
         if (report.danglingRefsRemoved) {
-          console.warn(`Dangling relatedObjectIds removed: ${report.danglingRefsRemoved}`)
+          console.info(`[Agenix Cleanup] Removed ${report.danglingRefsRemoved} broken logic links during sanitization.`);
         }
         
         if (report.duplicateIds.length > 0) {
-          console.warn('Duplicate IDs found:', report.duplicateIds)
+          console.warn('[Agenix Import] Duplicate IDs found and resolved:', report.duplicateIds);
         }
-        
         if (report.brokenParents.length > 0) {
-          console.warn('Broken parent references:', report.brokenParents)
+          console.warn('[Agenix Import] Broken parent references detected:', report.brokenParents);
+        }
+        if (report.brokenChildren.length > 0) {
+          console.warn('[Agenix Import] Broken children references detected:', report.brokenChildren);
         }
         
-        if (report.brokenChildren.length > 0) {
-          console.warn('Broken children references:', report.brokenChildren)
-        }
-        console.groupEnd()
+        console.groupEnd();
 
-        setScene(validObjects, validLogicItems)
+        setScene(validObjects, validLogicItems);
         
         // Show a brief summary to user
-        const hasWarnings = report.discarded > 0 || report.logicDiscarded > 0 || report.brokenParents.length > 0 || report.brokenChildren.length > 0 || (report.danglingRefsRemoved ?? 0) > 0
+        const hasWarnings = report.discarded > 0 || report.logicDiscarded > 0 || report.brokenParents.length > 0 || report.brokenChildren.length > 0 || (report.danglingRefsRemoved ?? 0) > 0;
         if (hasWarnings) {
-          alert(`Import successful with warnings. Check console for details.\n- Valid objects: ${report.valid}\n- Discarded objects: ${report.discarded}\n- Valid logic items: ${report.logicValid}\n- Discarded logic items: ${report.logicDiscarded}${report.danglingRefsRemoved ? `\n- Dangling refs cleaned: ${report.danglingRefsRemoved}` : ''}`)
+          alert(`Import successful with warnings. Check console for details.\n- Valid objects: ${report.valid}\n- Discarded objects: ${report.discarded}\n- Valid logic items: ${report.logicValid}\n- Discarded logic items: ${report.logicDiscarded}${report.danglingRefsRemoved ? `\n- Dangling refs cleaned: ${report.danglingRefsRemoved}` : ''}`);
         }
       } catch (err: any) {
         console.error('Failed to import scene', err)
@@ -85,17 +79,8 @@ function App() {
     e.target.value = ''
   }
 
-  const getDescendantIds = (parentId: string): string[] => {
-    const children = objects.filter(o => o.parentId === parentId);
-    return children.reduce((acc, child) => {
-      return [...acc, child.id, ...getDescendantIds(child.id)];
-    }, [] as string[]);
-  };
 
-  const descendantIds = selectedObject ? getDescendantIds(selectedObject.id) : [];
-  const validParents = objects.filter(o => 
-    selectedObject && o.id !== selectedObject.id && !descendantIds.includes(o.id)
-  );
+
 
   const handleCreateObject = (type: 'box' | 'zone' | 'unit') => {
     if (!contextMenu) return
@@ -156,6 +141,8 @@ function App() {
           <button onClick={handleExport}><Download size={16} /> Export</button>
           <button onClick={handleImportClick}><Upload size={16} /> Import</button>
           <input 
+            id="import-file"
+            name="importFile"
             type="file" 
             ref={fileInputRef} 
             onChange={handleImport} 

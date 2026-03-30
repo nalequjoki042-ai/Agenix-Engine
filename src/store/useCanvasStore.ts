@@ -77,8 +77,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   })),
 
   removeObject: (id) => set((state) => {
-    // Clean up relatedObjectIds in all logicItems when an object is deleted.
-    // The logicItem itself is NOT deleted even if relatedObjectIds becomes empty.
+    const objToRemove = state.objects.find(o => o.id === id);
     const cleanedLogicItems = state.logicItems.map(item => {
       if (item.relatedObjectIds.includes(id)) {
         return { ...item, relatedObjectIds: item.relatedObjectIds.filter(oid => oid !== id) };
@@ -86,9 +85,9 @@ export const useCanvasStore = create<CanvasState>((set) => ({
       return item;
     });
 
-    const hadDanglingRefs = cleanedLogicItems.some((item, i) => item !== state.logicItems[i]);
-    if (hadDanglingRefs) {
-      console.warn(`[Agenix] Object "${id}" removed — cleaned relatedObjectIds in logicItems.`);
+    const itemsCleaned = cleanedLogicItems.filter((item, i) => item !== state.logicItems[i]).length;
+    if (itemsCleaned > 0) {
+      console.info(`[Agenix Cleanup] Object "${objToRemove?.name}" (${id}) deleted. Removed its ID from ${itemsCleaned} logic rule(s).`);
     }
 
     return {

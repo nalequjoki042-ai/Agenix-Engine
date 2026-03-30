@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useCanvasStore, GameObject, LogicRef } from '../store/useCanvasStore';
-import { Settings, Code, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
+import { useCanvasStore, LogicRef } from '../store/useCanvasStore';
+import { Settings, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
 
 export const Inspector: React.FC = () => {
   const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject } = useCanvasStore();
@@ -142,6 +142,8 @@ export const Inspector: React.FC = () => {
           <div style={{ flex: 1 }}>
             <span style={LabelStyle}>NAME</span>
             <input 
+              id="obj-name"
+              name="objectName"
               type="text" 
               value={selectedObject.name} 
               onChange={(e) => updateObject(selectedObject.id, { name: e.target.value })}
@@ -154,6 +156,8 @@ export const Inspector: React.FC = () => {
           <div style={{ flex: 1 }}>
             <span style={LabelStyle}>TYPE</span>
             <select 
+              id="obj-type"
+              name="objectType"
               value={selectedObject.type}
               onChange={(e) => updateObject(selectedObject.id, { type: e.target.value as any })}
               style={InputStyle}
@@ -167,6 +171,8 @@ export const Inspector: React.FC = () => {
           <div style={{ flex: 1 }}>
             <span style={LabelStyle}>CLASS</span>
             <input 
+              id="obj-class"
+              name="objectClass"
               type="text" 
               value={selectedObject.className || ''} 
               onChange={(e) => updateObject(selectedObject.id, { className: e.target.value })}
@@ -179,6 +185,8 @@ export const Inspector: React.FC = () => {
         <div>
           <span style={LabelStyle}>PARENT</span>
           <select 
+            id="obj-parent"
+            name="objectParent"
             value={selectedObject.parentId || ''}
             onChange={(e) => updateObject(selectedObject.id, { parentId: e.target.value || null })}
             style={InputStyle}
@@ -198,6 +206,8 @@ export const Inspector: React.FC = () => {
             <div>
               <span style={LabelStyle}>X</span>
               <input 
+                id="obj-x"
+                name="transformX"
                 type="number" 
                 value={Math.round(selectedObject.transform.x)} 
                 onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, x: Number(e.target.value) } })}
@@ -207,6 +217,8 @@ export const Inspector: React.FC = () => {
             <div>
               <span style={LabelStyle}>Y</span>
               <input 
+                id="obj-y"
+                name="transformY"
                 type="number" 
                 value={Math.round(selectedObject.transform.y)} 
                 onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, y: Number(e.target.value) } })}
@@ -218,6 +230,8 @@ export const Inspector: React.FC = () => {
             <div>
               <span style={LabelStyle}>ROTATION</span>
               <input 
+                id="obj-rotation"
+                name="transformRotation"
                 type="number" 
                 value={selectedObject.transform.rotation || 0} 
                 onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, rotation: Number(e.target.value) } })}
@@ -227,6 +241,8 @@ export const Inspector: React.FC = () => {
             <div>
               <span style={LabelStyle}>SCALE</span>
               <input 
+                id="obj-scale"
+                name="transformScale"
                 type="number" 
                 value={selectedObject.transform.scaleX || 1} 
                 onChange={(e) => updateObject(selectedObject.id, { transform: { ...selectedObject.transform, scaleX: Number(e.target.value), scaleY: Number(e.target.value) } })}
@@ -241,6 +257,8 @@ export const Inspector: React.FC = () => {
       <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
         <span style={LabelStyle}>TAGS (comma separated)</span>
         <input 
+          id="obj-tags"
+          name="objectTags"
           type="text" 
           value={selectedObject.tags?.join(', ') || ''} 
           onChange={(e) => updateObject(selectedObject.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
@@ -253,6 +271,8 @@ export const Inspector: React.FC = () => {
       <SectionHeader title="Description" />
       <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
         <textarea 
+          id="obj-desc"
+          name="objectDescription"
           value={selectedObject.description || ''} 
           onChange={(e) => updateObject(selectedObject.id, { description: e.target.value })}
           placeholder="Object description..."
@@ -267,6 +287,8 @@ export const Inspector: React.FC = () => {
         {Object.entries(selectedObject.properties || {}).map(([key, value]) => (
           <div key={key} style={{ display: 'flex', gap: 4, marginBottom: 8, alignItems: 'center' }}>
             <input 
+              id={`prop-key-${key}`}
+              name={`propKey_${key}`}
               type="text" 
               defaultValue={key}
               onBlur={(e) => handleUpdatePropertyKey(key, e.target.value)}
@@ -274,6 +296,8 @@ export const Inspector: React.FC = () => {
               placeholder="Key"
             />
             <input 
+              id={`prop-val-${key}`}
+              name={`propVal_${key}`}
               type="text" 
               value={String(value)}
               onChange={(e) => handleUpdatePropertyValue(key, e.target.value)}
@@ -290,6 +314,8 @@ export const Inspector: React.FC = () => {
         ))}
         <div style={{ display: 'flex', gap: 4, marginTop: 8, alignItems: 'center' }}>
           <input 
+            id="new-prop-key"
+            name="newPropKey"
             type="text" 
             value={newPropKey}
             onChange={(e) => setNewPropKey(e.target.value)}
@@ -297,6 +323,8 @@ export const Inspector: React.FC = () => {
             placeholder="New Key"
           />
           <input 
+            id="new-prop-val"
+            name="newPropValue"
             type="text" 
             value={newPropValue}
             onChange={(e) => setNewPropValue(e.target.value)}
@@ -377,6 +405,8 @@ export const Inspector: React.FC = () => {
           <div key={ref.id} style={{ background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 8, borderLeft: '3px solid #a8b1ff' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <input 
+                id={`ref-name-${ref.id}`}
+                name={`refName_${ref.id}`}
                 type="text" 
                 value={ref.name}
                 onChange={(e) => handleUpdateLogicRef(ref.id, { name: e.target.value })}
@@ -385,6 +415,8 @@ export const Inspector: React.FC = () => {
               />
               <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                 <input 
+                  id={`ref-enabled-${ref.id}`}
+                  name={`refEnabled_${ref.id}`}
                   type="checkbox"
                   checked={ref.enabled}
                   onChange={(e) => handleUpdateLogicRef(ref.id, { enabled: e.target.checked })}
@@ -402,6 +434,8 @@ export const Inspector: React.FC = () => {
             <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
               <div style={{ flex: 1 }}>
                 <select 
+                  id={`ref-type-${ref.id}`}
+                  name={`refType_${ref.id}`}
                   value={ref.type}
                   onChange={(e) => handleUpdateLogicRef(ref.id, { type: e.target.value as any })}
                   style={InputStyle}
@@ -414,6 +448,8 @@ export const Inspector: React.FC = () => {
             </div>
 
             <textarea 
+              id={`ref-desc-${ref.id}`}
+              name={`refDesc_${ref.id}`}
               value={ref.description || ''}
               onChange={(e) => handleUpdateLogicRef(ref.id, { description: e.target.value })}
               style={{ ...InputStyle, resize: 'vertical' }}

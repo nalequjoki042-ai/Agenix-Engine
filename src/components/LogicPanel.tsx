@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useCanvasStore } from '../store/useCanvasStore';
 import { FileText, Plus, Trash2, CheckSquare, Square } from 'lucide-react';
 
@@ -6,6 +6,55 @@ export const LogicPanel: React.FC = () => {
   const { logicItems, addLogicItem, updateLogicItem, deleteLogicItem, objects, linkLogicToObject, unlinkLogicFromObject, selectedLogicItemId, selectLogicItem } = useCanvasStore();
 
   const selectedItem = logicItems.find(item => item.id === selectedLogicItemId);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [enabledFilter, setEnabledFilter] = useState<'all' | 'enabled' | 'disabled'>('all');
+  const [objectFilter, setObjectFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
+
+  const availableTags = useMemo(() => {
+    const tags = new Set<string>();
+    logicItems.forEach(item => {
+      item.tags?.forEach(tag => tags.add(tag));
+    });
+    return Array.from(tags).sort();
+  }, [logicItems]);
+
+  const filteredItems = useMemo(() => {
+    return logicItems.filter(item => {
+      // 1. Search filter
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = 
+          item.title.toLowerCase().includes(q) ||
+          item.text.toLowerCase().includes(q) ||
+          (item.notes || '').toLowerCase().includes(q) ||
+          (item.tags || []).some(t => t.toLowerCase().includes(q));
+        if (!matchesSearch) return false;
+      }
+
+      // 2. Enabled filter
+      if (enabledFilter === 'enabled' && !item.enabled) return false;
+      if (enabledFilter === 'disabled' && item.enabled) return false;
+
+      // 3. Object filter
+      if (objectFilter !== 'all' && !item.relatedObjectIds.includes(objectFilter)) return false;
+
+      // 4. Tag filter
+      if (tagFilter !== 'all' && !(item.tags || []).includes(tagFilter)) return false;
+
+      return true;
+    });
+  }, [logicItems, searchQuery, enabledFilter, objectFilter, tagFilter]);
+
+  const resetFilters = () => {
+    setSearchQuery('');
+    setEnabledFilter('all');
+    setObjectFilter('all');
+    setTagFilter('all');
+  };
+
+  const hasActiveFilters = searchQuery !== '' || enabledFilter !== 'all' || objectFilter !== 'all' || tagFilter !== 'all';
 
   const handleAdd = () => {
     const newId = crypto.randomUUID();
@@ -38,7 +87,7 @@ export const LogicPanel: React.FC = () => {
         left: 300,
         right: 360,
         bottom: 20,
-        height: 250,
+        height: 350,
         padding: 20,
         borderRadius: 12,
         pointerEvents: 'auto',
@@ -47,7 +96,7 @@ export const LogicPanel: React.FC = () => {
       }}
     >
       {/* LEFT LIST */}
-      <div style={{ width: 200, display: 'flex', flexDirection: 'column', gap: 10, borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: 20 }}>
+      <div style={{ width: 260, display: 'flex', flexDirection: 'column', gap: 10, borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <FileText size={20} />
@@ -58,11 +107,67 @@ export const LogicPanel: React.FC = () => {
           </button>
         </div>
 
+        {/* FILTERS */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingBottom: 10, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <input 
+            id="logic-search"
+            name="logicSearch"
+            type="text" 
+            placeholder="Search..." 
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            style={{ ...InputStyle, marginTop: 0 }}
+          />
+          <div style={{ display: 'flex', gap: 4 }}>
+            <select 
+              id="logic-filter-enabled"
+              name="logicFilterEnabled"
+              value={enabledFilter}
+              onChange={e => setEnabledFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
+              style={{ ...InputStyle, marginTop: 0, padding: '4px 2px', flex: 1, fontSize: 13 }}
+            >
+              <option value="all" style={{ color: 'black' }}>Status: All</option>
+              <option value="enabled" style={{ color: 'black' }}>Enabled</option>
+              <option value="disabled" style={{ color: 'black' }}>Disabled</option>
+            </select>
+            <select 
+              id="logic-filter-tag"
+              name="logicFilterTag"
+              value={tagFilter}
+              onChange={e => setTagFilter(e.target.value)}
+              style={{ ...InputStyle, marginTop: 0, padding: '4px 2px', flex: 1, fontSize: 13 }}
+            >
+              <option value="all" style={{ color: 'black' }}>Tag: All</option>
+              {availableTags.map(tag => <option key={tag} value={tag} style={{ color: 'black' }}>{tag}</option>)}
+            </select>
+          </div>
+          <select 
+            id="logic-filter-object"
+            name="logicFilterObject"
+            value={objectFilter}
+            onChange={e => setObjectFilter(e.target.value)}
+            style={{ ...InputStyle, marginTop: 0, padding: '4px 2px', fontSize: 13 }}
+          >
+            <option value="all" style={{ color: 'black' }}>Object: All</option>
+            {objects.map(obj => <option key={obj.id} value={obj.id} style={{ color: 'black' }}>{obj.name}</option>)}
+          </select>
+          {hasActiveFilters && (
+            <button 
+              onClick={resetFilters}
+              style={{ background: 'rgba(255,255,255,0.1)', border: 'none', color: '#ff6b6b', borderRadius: 4, cursor: 'pointer', padding: '4px', fontSize: 12 }}
+            >
+              Reset Filters
+            </button>
+          )}
+        </div>
+
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4 }}>
           {logicItems.length === 0 ? (
             <div style={{ fontSize: 14, color: '#888', marginTop: 10 }}>No logic rules yet.</div>
+          ) : filteredItems.length === 0 ? (
+            <div style={{ fontSize: 14, color: '#888', marginTop: 10 }}>No rules match filters.</div>
           ) : (
-            logicItems.map(item => (
+            filteredItems.map(item => (
               <div 
                 key={item.id}
                 onClick={() => selectLogicItem(item.id)}
@@ -77,10 +182,17 @@ export const LogicPanel: React.FC = () => {
                   opacity: item.enabled ? 1 : 0.6
                 }}
               >
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{item.title}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>{item.title}</span>
+                  {(item.tags && item.tags.length > 0) && (
+                    <span style={{ fontSize: 10, color: selectedLogicItemId === item.id ? 'rgba(255,255,255,0.7)' : '#888', marginTop: 2 }}>
+                      {item.tags.join(', ')}
+                    </span>
+                  )}
+                </div>
                 <button 
                   onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
-                  style={{ background: 'transparent', border: 'none', color: selectedLogicItemId === item.id ? 'white' : '#ff6b6b', cursor: 'pointer', padding: 0, flexShrink: 0 }}
+                  style={{ background: 'transparent', border: 'none', color: selectedLogicItemId === item.id ? 'white' : '#ff6b6b', cursor: 'pointer', padding: 0, flexShrink: 0, marginLeft: 8 }}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -100,6 +212,8 @@ export const LogicPanel: React.FC = () => {
                 <div style={{ flex: 1 }}>
                   <span style={LabelStyle}>TITLE</span>
                   <input 
+                    id="logic-title"
+                    name="logicTitle"
                     type="text" 
                     value={selectedItem.title} 
                     onChange={e => updateLogicItem(selectedItem.id, { title: e.target.value })}
@@ -108,6 +222,8 @@ export const LogicPanel: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18 }}>
                   <input 
+                    id="logic-enabled"
+                    name="logicEnabled"
                     type="checkbox" 
                     checked={selectedItem.enabled}
                     onChange={e => updateLogicItem(selectedItem.id, { enabled: e.target.checked })}
@@ -119,6 +235,8 @@ export const LogicPanel: React.FC = () => {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <span style={LabelStyle}>LOGIC TEXT (RUSSIAN SUPPORTED)</span>
                 <textarea 
+                  id="logic-text"
+                  name="logicText"
                   value={selectedItem.text} 
                   onChange={e => updateLogicItem(selectedItem.id, { text: e.target.value })}
                   style={{ ...InputStyle, flex: 1, resize: 'none', fontFamily: 'monospace' }}
@@ -130,6 +248,8 @@ export const LogicPanel: React.FC = () => {
                 <div style={{ flex: 1 }}>
                   <span style={LabelStyle}>TAGS (comma separated)</span>
                   <input 
+                    id="logic-tags"
+                    name="logicTags"
                     type="text" 
                     value={selectedItem.tags?.join(', ') || ''} 
                     onChange={e => updateLogicItem(selectedItem.id, { tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) })}
@@ -140,6 +260,8 @@ export const LogicPanel: React.FC = () => {
                 <div style={{ flex: 1 }}>
                   <span style={LabelStyle}>NOTES</span>
                   <input 
+                    id="logic-notes"
+                    name="logicNotes"
                     type="text" 
                     value={selectedItem.notes || ''} 
                     onChange={e => updateLogicItem(selectedItem.id, { notes: e.target.value })}
@@ -194,3 +316,4 @@ export const LogicPanel: React.FC = () => {
     </div>
   );
 };
+

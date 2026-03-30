@@ -58,6 +58,7 @@ const extractSceneData = (data: any): { objectsRaw: any[]; logicRaw: any[] } => 
   }
   // Old format: plain array
   if (Array.isArray(data)) {
+    console.info('[Agenix Import] Legacy format detected (GameObject array). Converting to current structure.');
     return { objectsRaw: data, logicRaw: [] };
   }
   throw new Error('Scene data must be an array of objects or an object with "objects" property.');
@@ -148,7 +149,6 @@ export const validateAndFilterScene = (data: any): ValidationResult => {
 
   if (danglingRefsRemoved > 0) {
     report.danglingRefsRemoved = danglingRefsRemoved;
-    console.warn(`[Agenix Import] Removed ${danglingRefsRemoved} dangling relatedObjectIds from logicItems.`);
   }
 
   return {
