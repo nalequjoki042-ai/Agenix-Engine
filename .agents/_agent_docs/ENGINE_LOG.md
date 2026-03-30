@@ -1,113 +1,294 @@
 # Engine Log
 
-## [2026-03-28] Phase 4: Object Model & Inspector Refactoring
-**Status:** Completed
+## [2026-03-28] Phase 4: Расширение объектной модели и рефакторинг Inspector
+**Статус:** Завершено
 
-### Summary:
-Expanded the core data model and reorganized the Inspector UI to handle complex object properties and logic references. Fixed critical selection-related state issues.
+### Кратко
+Была расширена базовая модель объектов и вынесен Inspector в отдельный компонент. Это сделало код поддерживаемее и подготовило редактор к более сложным свойствам объектов.
 
-### Changes:
-- **Object Model**: Added `description`, `properties` (Record), and `logicRefs` (LogicRef array) to `GameObject` in `useCanvasStore.ts`.
-- **Refactoring**: Extracted the massive inline Inspector from `App.tsx` into a dedicated `src/components/Inspector.tsx`.
-- **UI Enhancements**:
-  - New "Custom Properties" section with dynamic key-value pair editing (Add/Edit/Delete).
-  - New "Logic References" section with support for logical links (Name, Type, Description, Enabled toggle).
-  - Added dedicated "Description" and "Tags" sections.
-  - Organized Inspector into visual blocks (Basic, Transform, Tags, Description, Properties, Logic).
-- **Bug Fix**: Implemented the `key={selectedObject.id}` pattern on the Inspector root to force a full state reset when switching between objects. This prevents data contamination between selected entities.
+### Что было сделано
+- В модель `GameObject` добавлены:
+  - `description`
+  - `properties`
+  - `logicRefs`
+- Большой inline-inspector из `App.tsx` вынесен в отдельный файл:
+  - `src/components/Inspector.tsx`
+- В Inspector добавлены секции:
+  - Basic
+  - Transform
+  - Tags
+  - Description
+  - Custom Properties
+  - Logic References
+- Исправлен баг загрязнения состояния при переключении между объектами через принудительный reset корня Inspector по `selectedObject.id`
 
-### Next Steps:
-- Prepare for the "Logic Model" phase.
-- Consider adding collapsible sections if the Inspector grows too long.
-- Explore basic validation for custom property keys.
+### Итог
+Редактор получил более сильную объектную модель и нормальный отдельный Inspector.
 
-## [2026-03-28] Phase 5: Scene Serialization (Save/Load)
-**Status:** Completed
+### Следующий шаг
+Подготовка к сохранению сцены и работе с сериализацией.
 
-### Summary:
-Implemented basic scene export and import to/from JSON, keeping within the strict boundaries of v1.
+---
 
-### Changes:
-- **Canvas Store**: Added `setObjects` action to `useCanvasStore.ts` to allow replacing the entire scene state.
-- **App UI**:
-  - Added "Import" button to the top toolbar next to the "Export" button.
-  - Implemented `handleExport` which downloads `scene.json` containing the raw array of `GameObject` instances.
-  - Implemented `handleImport` which uses a hidden `<input type="file">` to read and parse a JSON file, replacing the current scene via `setObjects` if valid.
+## [2026-03-28] Phase 5: Базовое сохранение и загрузка сцены
+**Статус:** Завершено
 
-### Next Steps:
-- Add error boundaries/validation for imported JSON schema to avoid runtime crashes from malformed data.
+### Кратко
+Добавлен первый рабочий вариант Export / Import сцены в JSON без бэкенда.
 
-## [2026-03-28] Phase 6: Comprehensive Testing (Export/Import)
-**Status:** Completed
+### Что было сделано
+- В store добавлен action:
+  - `setObjects`
+- В UI добавлены кнопки:
+  - `Export`
+  - `Import`
+- Реализован `handleExport`, сохраняющий сцену в `scene.json`
+- Реализован `handleImport`, читающий JSON через hidden file input и `FileReader`
 
-### Summary:
-Performed exhaustive testing of the serialization logic using both automated tests (Vitest) and manual logic verification across 30 test cases.
+### Ограничения этапа
+- сохранялся только массив объектов;
+- строгой валидации схемы ещё не было;
+- проекты / cloud sync / backend не добавлялись.
 
-### Changes:
-- **Testing Infrastructure**: Installed `vitest`, `@testing-library/react`, and `jsdom`.
-- **Automated Tests**: Created `src/tests/sceneSerialization.test.ts` covering core data integrity, hierarchy preservation, and edge cases like Unicode/Special characters.
-- **Reporting**: Generated `TEST_REPORT.md` with detailed status for each of the 30 test cases.
-- **Verification**: Confirmed that the current implementation is resilient to circular references (via `visited` Set in rendering) and malformed JSON (via `try-catch` and `Array.isArray` checks).
+### Итог
+Появился первый рабочий локальный цикл сохранения и загрузки сцены.
 
-### Next Steps:
-- Consider moving towards a more robust schema validation (e.g., Zod) as suggested in `OPEN_QUESTIONS.md`.
-- Integrate vitest into the `package.json` scripts for easier CI/CD usage.
+### Следующий шаг
+Усилить импорт валидацией, чтобы битый JSON не ломал редактор.
 
-## [2026-03-28] Phase 7: Robust Scene Import & Validation
-**Status:** Completed
+---
 
-### Summary:
-Implemented a validation layer for scene imports to prevent application crashes from malformed JSON and expanded the test suite.
+## [2026-03-28] Phase 6: Базовое тестирование сериализации
+**Статус:** Завершено
 
-### Changes:
-- **Validation Utility**: Created `src/utils/sceneValidation.ts` to centralize logic for verifying `GameObject` structure (`id`, `name`, `transform`).
-- **Improved Import Logic**:
-  - Updated `handleImport` in `App.tsx` to use the validation utility.
-  - Added filtering of invalid objects (those missing mandatory fields).
-  - Added specific error messages (e.g., "Scene data must be an array").
-  - Ensured the current scene is not overwritten if the imported file contains zero valid objects.
-- **Enhanced Testing**:
-  - Updated `src/tests/sceneSerialization.test.ts` with 8 comprehensive test cases.
-  - Covered edge cases: missing mandatory fields, incorrect data types, circular references (store-level), and empty inputs.
+### Кратко
+Проведено тестирование механики Export / Import и сохранности данных сцены.
 
-### Next Steps:
-- Add UI feedback/notifications for skipped (filtered) objects during import.
-- Explore adding a "Merge Scene" option vs the current "Replace Scene".
+### Что было сделано
+- Добавлена тестовая инфраструктура:
+  - `vitest`
+  - `jsdom`
+  - связанный набор тестов
+- Подготовлен отчёт по тест-кейсам
+- Проверены:
+  - round-trip сценарии
+  - сохранение transform
+  - description
+  - tags
+  - custom properties
+  - logic references
+  - иерархия объектов
+  - устойчивость к базовым ошибкам импорта
 
-## [2026-03-28] Phase 8: Enhanced Import Validation & Reference Integrity
-**Status:** Completed
+### Ограничение этапа
+Часть ранних проверок была более логической, чем фактически пользовательской, поэтому позднее валидацию и поведение импорта пришлось усиливать.
 
-### Summary:
-Significantly strengthened the scene import process by adding deep validation for ID uniqueness and reference integrity.
+### Итог
+Экспорт / импорт был признан рабочим на базовом уровне, но стало ясно, что нужен отдельный слой защиты от битых данных.
 
-### Changes:
-- **Comprehensive Validation Utility**:
-  - Updated `src/utils/sceneValidation.ts` to return a detailed `ValidationResult` including an `ImportReport`.
-  - Added strict check for duplicate IDs (duplicate objects are now discarded).
-  - Added cross-reference checks: `parentId` and `childrenIds` are verified against the list of existing IDs.
-- **Improved UI Feedback**:
-  - Updated `handleImport` in `App.tsx` to provide a detailed report in the console (`console.group`).
-  - Added warnings for broken references and duplicate IDs.
-  - User receives an alert summary if any issues (discarded objects or broken links) were found.
-- **Updated Test Suite**:
-  - Expanded `src/tests/sceneSerialization.test.ts` to cover duplicate ID filtering and broken reference reporting.
-  - All 11 test cases passed.
+### Следующий шаг
+Сделать реальную валидацию импортируемой сцены.
 
-### Next Steps:
-- Consider visual indicators in the Hierarchy or Inspector for objects with broken references.
-- Implement more granular "Safe Import" options (e.g., auto-cleaning broken links).
+---
 
-## [2026-03-28] Phase 9: Agent Docs Alignment
-**Status:** Completed
+## [2026-03-28] Phase 7: Усиление импорта и базовая валидация сцены
+**Статус:** Завершено
 
-### Summary:
-Aligned the agent documents (`agent-rules.md`, `agenix-rules.md`, `CURRENT_TASK.md`, `ENGINE_LOG.md`) to reflect the new project vector. The project is no longer aimed at a runtime-heavy engine, but instead focuses on a visual editor with human-readable text logic stored strictly as data (no runtime execution, ECS, physics, or AI at this stage).
+### Кратко
+Добавлен отдельный слой проверки импортируемых данных, чтобы редактор не падал на кривом JSON.
 
-### Changes:
-- **`agent-rules.md`**: Removed references to missing workflow files, eliminated hardcoded Windows absolute paths, and enforced strict scope control.
-- **`agenix-rules.md`**: Updated product context to explicitly state that the next phase is text logic as a data layer, shifting focus away from runtime execution and ECS.
-- **`CURRENT_TASK.md`**: Scoped strictly to the current subtask (Agent Docs Alignment), removing broader Phase 9 goals to avoid preemptive implementation.
-- **`ENGINE_LOG.md`**: Added this entry to document the document alignment phase.
+### Что было сделано
+- Создана утилита:
+  - `src/utils/sceneValidation.ts`
+- Добавлена проверка:
+  - что входные данные являются массивом
+  - что объект содержит обязательные поля
+- Импорт перестал затирать сцену, если файл невалиден
+- Для пользователя появились более понятные ошибки
+- Расширены тесты на edge cases
 
-### Next Steps:
-- Implement the UI, store, and data structures for the text logic data layer in the upcoming phases, according to the newly updated project rules.
+### Итог
+Редактор перестал быть хрупким к мусорному JSON и получил безопасный сценарий импорта.
+
+### Следующий шаг
+Усилить проверку целостности ссылок и дубликатов.
+
+---
+
+## [2026-03-28] Phase 8: Проверка ссылочной целостности и дубликатов при импорте
+**Статус:** Завершено
+
+### Кратко
+Импорт сцены стал проверять не только форму данных, но и более глубокую целостность связей.
+
+### Что было сделано
+- В `sceneValidation.ts` добавлены:
+  - проверка уникальности `id`
+  - отбрасывание дубликатов
+  - проверка `parentId`
+  - проверка `childrenIds`
+- Добавлен подробный отчёт импорта
+- В консоль выводится структурированная информация о проблемах
+- Пользователь получает краткое summary по проблемам импорта
+- Тесты расширены под:
+  - duplicate IDs
+  - broken references
+  - import reporting
+
+### Итог
+Импорт стал не только безопасным, но и гораздо более прозрачным по качеству данных.
+
+### Следующий шаг
+Подготовить проект к новому вектору: текстовая логика как отдельный слой данных.
+
+---
+
+## [2026-03-28] Phase 9A: Выравнивание агентских документов
+**Статус:** Завершено
+
+### Кратко
+Агентские документы были приведены в соответствие с новым направлением проекта.
+
+### Что было сделано
+- Уточнён продуктовый вектор:
+  - проект не уходит в runtime-heavy engine
+  - фокус на визуальном редакторе сцены и логики
+- Обновлены правила агентов и текущая задача
+- Зафиксировано, что логика на ближайших этапах должна храниться как данные, а не исполняться
+
+### Итог
+Контекст для следующих агентов стал ближе к реальному направлению проекта.
+
+### Следующий шаг
+Добавить в код отдельную модель текстовой логики.
+
+---
+
+## [2026-03-28] Phase 9B: Модель данных текстовой логики
+**Статус:** Завершено
+
+### Кратко
+Добавлен новый независимый слой данных для текстовой логики.
+
+### Что было сделано
+- Создан новый тип:
+  - `src/types/logic.ts`
+- В store добавлены:
+  - `logicItems`
+  - `addLogicItem`
+  - `updateLogicItem`
+  - `deleteLogicItem`
+  - `linkLogicToObject`
+  - `unlinkLogicFromObject`
+- Текстовая логика хранится отдельно от `GameObject`
+- Старые `logicRefs` сознательно не трогались
+
+### Итог
+Проект получил основу для человекочитаемой логики, связанной с объектами через ID.
+
+### Следующий шаг
+Сделать UI для работы с этой логикой.
+
+---
+
+## [2026-03-28] Phase 9C: Панель редактирования текстовой логики
+**Статус:** Завершено
+
+### Кратко
+Добавлена отдельная `LogicPanel` для просмотра и редактирования текстовых правил.
+
+### Что было сделано
+- Создан компонент:
+  - `src/components/LogicPanel.tsx`
+- Панель позволяет:
+  - видеть список правил
+  - создавать правило
+  - удалять правило
+  - редактировать `title`
+  - редактировать `text`
+  - включать / выключать `enabled`
+  - редактировать `tags`
+  - редактировать `notes`
+  - привязывать объекты через `relatedObjectIds`
+- Панель встроена в основной UI
+
+### Итог
+Текстовая логика стала реально редактируемой через интерфейс, а не только через store.
+
+### Следующий шаг
+Связать новую логику с Inspector объекта.
+
+---
+
+## [2026-03-28] Phase 9D: Интеграция текстовой логики в Inspector
+**Статус:** Завершено
+
+### Кратко
+Inspector начал показывать текстовые правила, связанные с выбранным объектом.
+
+### Что было сделано
+- В store добавлены:
+  - `selectedLogicItemId`
+  - `selectLogicItem`
+- `LogicPanel` переведена на общий выбор правила через store
+- В `Inspector.tsx` добавлена секция:
+  - `Scenario Rules`
+- В инспекторе теперь можно:
+  - видеть связанные правила
+  - открыть правило в `LogicPanel`
+  - отвязать правило от объекта
+  - создать новое правило сразу привязанным к выбранному объекту
+
+### Итог
+Появилась связка:
+- глобальная панель логики
+- локальный объектный контекст в Inspector
+
+### Следующий шаг
+Научить сцену сохранять и восстанавливать `logicItems` вместе с объектами.
+
+---
+
+## [2026-03-28] Phase 9E: Persistence для текстовой логики
+**Статус:** В процессе / не завершено
+
+### Кратко
+Цель этапа — сделать так, чтобы `logicItems` сохранялись и загружались вместе со сценой.
+
+### Целевой результат этапа
+Сцена должна перейти от старого формата:
+
+```ts
+к новому:
+
+{
+  objects: GameObject[];
+  logicItems: LogicTextItem[];
+}
+
+при сохранении обратной совместимости на импорт.
+
+Что уже есть к началу этапа
+logicItems в store
+LogicPanel
+Scenario Rules в Inspector
+Что ещё не считается завершённым
+экспорт по-прежнему не должен считаться завершённым, если в JSON отсутствует logicItems
+импорт не должен считаться завершённым, если после ручной проверки текстовая логика теряется
+этап нельзя помечать Completed, пока не пройден реальный сценарий:
+создать объекты
+создать текстовые правила
+привязать их к объектам
+сделать Export
+сделать Import
+убедиться, что:
+logicItems реально есть в JSON
+правила восстановились
+связи видны и в LogicPanel, и в Inspector
+Известная причина незавершённости
+
+Если экспорт всё ещё сохраняет только массив объектов, то текстовая логика живёт только в памяти и после импорта теряется.
+
+Следующий шаг
+
+Завершить persistence для logicItems, добавить валидацию логики при импорте и подтвердить результат реальной ручной проверкой.
