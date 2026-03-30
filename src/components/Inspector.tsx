@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useCanvasStore, GameObject, LogicRef } from '../store/useCanvasStore';
-import { Settings, Code, Plus, Trash2 } from 'lucide-react';
+import { Settings, Code, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
 
 export const Inspector: React.FC = () => {
-  const { objects, selectedObjectIds, updateObject } = useCanvasStore();
+  const { objects, selectedObjectIds, updateObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject } = useCanvasStore();
   
   const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
 
@@ -85,6 +85,18 @@ export const Inspector: React.FC = () => {
       logicRefs: selectedObject.logicRefs.filter(ref => ref.id !== id)
     });
   };
+
+  const handleCreateTextLogic = () => {
+    const newId = crypto.randomUUID();
+    addLogicItem({ 
+      id: newId, 
+      title: 'New Scenario Rule', 
+      relatedObjectIds: [selectedObject.id] 
+    });
+    selectLogicItem(newId);
+  };
+
+  const relatedLogicItems = logicItems.filter(item => item.relatedObjectIds.includes(selectedObject.id));
 
   const SectionHeader = ({ title }: { title: string }) => (
     <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, marginTop: 16, fontWeight: 'bold' }}>
@@ -291,6 +303,56 @@ export const Inspector: React.FC = () => {
             <Plus size={16} />
           </button>
         </div>
+      </div>
+
+      {/* SCENARIO RULES Section */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <SectionHeader title="Scenario Rules" />
+        <button 
+          onClick={handleCreateTextLogic}
+          style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', borderRadius: 4, cursor: 'pointer', padding: '2px 8px', fontSize: 12, marginBottom: 8 }}
+        >
+          + Add
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {relatedLogicItems.map(item => (
+          <div key={item.id} style={{ background: 'rgba(0,0,0,0.3)', padding: 12, borderRadius: 8, borderLeft: item.enabled ? '3px solid #4CAF50' : '3px solid #888' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div 
+                style={{ flex: 1, cursor: 'pointer' }}
+                onClick={() => selectLogicItem(item.id)}
+              >
+                <div style={{ fontSize: 14, fontWeight: 'bold', color: item.enabled ? 'white' : '#888', marginBottom: 4 }}>
+                  <FileText size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                  {item.title}
+                </div>
+                <div style={{ fontSize: 12, color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                  {item.text || 'No text...'}
+                </div>
+              </div>
+              <button 
+                onClick={(e) => { e.stopPropagation(); unlinkLogicFromObject(item.id, selectedObject.id); }}
+                style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', padding: '4px', marginLeft: 8 }}
+                title="Unlink from object"
+              >
+                <Link2Off size={14} />
+              </button>
+            </div>
+            {item.tags && item.tags.length > 0 && (
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                {item.tags.map(tag => (
+                   <span key={tag} style={{ fontSize: 10, background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4, color: '#ccc' }}>{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+        {relatedLogicItems.length === 0 && (
+          <div style={{ fontSize: 12, color: '#888', textAlign: 'center', padding: '10px 0' }}>
+            No scenario rules attached.
+          </div>
+        )}
       </div>
 
       {/* LOGIC REFERENCES Section */}

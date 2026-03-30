@@ -5,6 +5,7 @@ import { useCanvasStore } from './store/useCanvasStore'
 import { Box, Play, Download, Upload, Square, Code, Settings, ListTree, User, Hexagon } from 'lucide-react'
 
 import { Inspector } from './components/Inspector'
+import { LogicPanel } from './components/LogicPanel'
 
 import { validateAndFilterScene } from './utils/sceneValidation'
 
@@ -228,6 +229,8 @@ function App() {
 
         {/* Properties Panel (Right side) */}
         <Inspector />
+
+        <LogicPanel />
 
         {/* Dynamic Context Menu */}
         {contextMenu && contextMenu.isOpen && (

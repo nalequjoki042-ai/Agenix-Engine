@@ -96,3 +96,18 @@ Significantly strengthened the scene import process by adding deep validation fo
 ### Next Steps:
 - Consider visual indicators in the Hierarchy or Inspector for objects with broken references.
 - Implement more granular "Safe Import" options (e.g., auto-cleaning broken links).
+
+## [2026-03-28] Phase 9: Agent Docs Alignment
+**Status:** Completed
+
+### Summary:
+Aligned the agent documents (`agent-rules.md`, `agenix-rules.md`, `CURRENT_TASK.md`, `ENGINE_LOG.md`) to reflect the new project vector. The project is no longer aimed at a runtime-heavy engine, but instead focuses on a visual editor with human-readable text logic stored strictly as data (no runtime execution, ECS, physics, or AI at this stage).
+
+### Changes:
+- **`agent-rules.md`**: Removed references to missing workflow files, eliminated hardcoded Windows absolute paths, and enforced strict scope control.
+- **`agenix-rules.md`**: Updated product context to explicitly state that the next phase is text logic as a data layer, shifting focus away from runtime execution and ECS.
+- **`CURRENT_TASK.md`**: Scoped strictly to the current subtask (Agent Docs Alignment), removing broader Phase 9 goals to avoid preemptive implementation.
+- **`ENGINE_LOG.md`**: Added this entry to document the document alignment phase.
+
+### Next Steps:
+- Implement the UI, store, and data structures for the text logic data layer in the upcoming phases, according to the newly updated project rules.

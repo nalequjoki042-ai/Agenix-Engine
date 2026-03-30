@@ -18,9 +18,8 @@ trigger: always_on
 ## Main working principle
 Сначала прочитай:
 1. `.agents/rules/agenix-rules.md`
-2. `.agents/workflows/agenix-workflows.md`
-3. `.agents/workflows/CURRENT_TASK.md`
-4. при необходимости:
+2. `.agents/workflows/CURRENT_TASK.md`
+3. при необходимости:
    - `.agents/_agent_docs/ARCHITECTURE.md`
    - `.agents/_agent_docs/OPEN_QUESTIONS.md`
    - `.agents/_agent_docs/ENGINE_LOG.md`
@@ -53,8 +52,8 @@ trigger: always_on
 3. Что именно работает теперь
 4. Что сознательно НЕ делалось
 5. Есть ли риски / открытые моменты
-6. Заполнить ( C:\Users\user\Documents\Program\28.03\Agenix\.agents\_agent_docs\ENGINE_LOG.md ) ! 
-7. Если есть что доабвить сделать это ( C:\Users\user\Documents\Program\28.03\Agenix\.agents\_agent_docs\OPEN_QUESTIONS.md  )
+6. Заполнить `ENGINE_LOG.md`!
+7. Если есть что добавить, сделать это в `OPEN_QUESTIONS.md`.
 
 ---
 
@@ -72,5 +71,5 @@ trigger: always_on
 1. editor core
 2. object model
 3. inspector and data editing
-4. logic foundation later
+4. text logic as a data layer (no runtime execution yet)
 5. AI / graph much later
