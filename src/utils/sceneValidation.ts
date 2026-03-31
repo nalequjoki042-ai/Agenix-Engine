@@ -56,6 +56,7 @@ export const validateObjectClass = (cls: any): cls is ObjectClass => {
   if (!Array.isArray(cls.defaultTags)) return false;
   if (!cls.defaultProperties || typeof cls.defaultProperties !== 'object') return false;
   if (typeof cls.defaultDescription !== 'string') return false;
+  if (cls.parentClassId !== undefined && cls.parentClassId !== null && typeof cls.parentClassId !== 'string') return false;
   return true;
 };
 
@@ -155,8 +156,12 @@ export const validateAndFilterScene = (data: any): ValidationResult => {
   // Step 3.5: Validate objectClasses
   const validObjectClasses: ObjectClass[] = [];
   const classIdSet = new Set<string>();
-  classesRaw.forEach((cls: any) => {
-    if (validateObjectClass(cls)) {
+  classesRaw.forEach((clsRaw: any) => {
+    if (validateObjectClass(clsRaw)) {
+      const cls: ObjectClass = {
+        ...clsRaw,
+        parentClassId: clsRaw.parentClassId || null
+      };
       if (classIdSet.has(cls.id)) {
         report.classesDiscarded++;
       } else {

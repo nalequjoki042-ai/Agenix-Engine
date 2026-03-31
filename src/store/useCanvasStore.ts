@@ -48,7 +48,7 @@ interface CanvasState {
   logicItems: LogicTextItem[]
   selectedLogicItemId: string | null
   objectClasses: ObjectClass[]
-  
+
   // Actions
   addObject: (obj: GameObject) => void
   updateObject: (id: string, updates: Partial<GameObject>) => void
@@ -73,6 +73,77 @@ interface CanvasState {
   unassignClassFromObject: (objectId: string) => void
 }
 
+function causesCycle(childId: string, proposedParentId: string | null, objectClasses: ObjectClass[]): boolean {
+  if (!proposedParentId) return false;
+  if (childId === proposedParentId) return true;
+
+  let currentParentId: string | null = proposedParentId;
+  const visited = new Set<string>();
+
+  while (currentParentId) {
+    if (currentParentId === childId) return true;
+    if (visited.has(currentParentId)) return true;
+    visited.add(currentParentId);
+
+    const parentCls = objectClasses.find(c => c.id === currentParentId);
+    if (!parentCls) break;
+    currentParentId = parentCls.parentClassId || null;
+  }
+
+  return false;
+}
+
+function resolveInheritedClass(classId: string, objectClasses: ObjectClass[]): Partial<ObjectClass> | null {
+  const visited = new Set<string>();
+  let currentClassId: string | null = classId;
+  const chain: ObjectClass[] = [];
+
+  while (currentClassId) {
+    if (visited.has(currentClassId)) {
+      console.warn(`[Agenix Inheritance] Cyclic inheritance detected at class ${currentClassId}. Breaking loop.`);
+      break;
+    }
+    visited.add(currentClassId);
+    
+    const cls = objectClasses.find(c => c.id === currentClassId);
+    if (!cls) break;
+    
+    chain.push(cls);
+    currentClassId = cls.parentClassId || null;
+  }
+
+  if (chain.length === 0) return null;
+
+  chain.reverse();
+
+  let resolvedDescription = '';
+  let resolvedTags: string[] = [];
+  const resolvedProperties: Record<string, unknown> = {};
+  let resolvedBaseType: 'box' | 'zone' | 'unit' | 'custom' = 'box';
+
+  chain.forEach(cls => {
+    if (cls.defaultDescription && cls.defaultDescription.trim() !== '') {
+      resolvedDescription = cls.defaultDescription;
+    }
+    if (cls.defaultTags && cls.defaultTags.length > 0) {
+      resolvedTags = [...new Set([...resolvedTags, ...cls.defaultTags])];
+    }
+    if (cls.defaultProperties) {
+      Object.assign(resolvedProperties, cls.defaultProperties);
+    }
+    if (cls.baseType) {
+      resolvedBaseType = cls.baseType;
+    }
+  });
+
+  return {
+    defaultDescription: resolvedDescription,
+    defaultTags: resolvedTags,
+    defaultProperties: resolvedProperties,
+    baseType: resolvedBaseType
+  };
+}
+
 export const useCanvasStore = create<CanvasState>((set) => ({
   objects: [],
   selectedObjectIds: [],
@@ -82,7 +153,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   objectClasses: [],
 
   addObject: (obj) => set((state) => ({ objects: [...state.objects, obj] })),
-  
+
   updateObject: (id, updates) => set((state) => ({
     objects: state.objects.map(o => o.id === id ? { ...o, ...updates } : o)
   })),
@@ -185,31 +256,73 @@ export const useCanvasStore = create<CanvasState>((set) => ({
       defaultTags: input?.defaultTags ? [...new Set(input.defaultTags)] : [],
       defaultProperties: input?.defaultProperties || {},
       defaultDescription: input?.defaultDescription || '',
+      parentClassId: input?.parentClassId || null,
     };
     return { objectClasses: [...state.objectClasses, newClass] };
   }),
 
-  updateObjectClass: (id, patch) => set((state) => ({
-    objectClasses: state.objectClasses.map(cls =>
-      cls.id === id ? { ...cls, ...patch } : cls
-    )
-  })),
+  updateObjectClass: (id, patch) => set((state) => {
+    const cleanPatch = { ...patch };
+    if (cleanPatch.parentClassId !== undefined && causesCycle(id, cleanPatch.parentClassId, state.objectClasses)) {
+      console.warn(`[Agenix] Cyclic class inheritance detected. Parent assignment blocked.`);
+      delete cleanPatch.parentClassId;
+    }
+
+    return {
+      objectClasses: state.objectClasses.map(cls =>
+        cls.id === id ? { ...cls, ...cleanPatch } : cls
+      )
+    };
+  }),
 
   deleteObjectClass: (id) => set((state) => ({
     objectClasses: state.objectClasses.filter(cls => cls.id !== id),
-    objects: state.objects.map(obj => 
+    objects: state.objects.map(obj =>
       obj.classId === id ? { ...obj, classId: null } : obj
     )
   })),
 
-  assignClassToObject: (objectId, classId) => set((state) => ({
-    objects: state.objects.map(obj => 
-      obj.id === objectId ? { ...obj, classId } : obj
-    )
-  })),
+  assignClassToObject: (objectId, classId) => set((state) => {
+    const resolvedClass = resolveInheritedClass(classId, state.objectClasses);
+    if (!resolvedClass) {
+      return {
+        objects: state.objects.map(obj =>
+          obj.id === objectId ? { ...obj, classId } : obj
+        )
+      };
+    }
+
+    return {
+      objects: state.objects.map(obj => {
+        if (obj.id !== objectId) return obj;
+
+        // Apply soft template mapping
+        const description = (obj.description && obj.description.trim() !== '')
+          ? obj.description
+          : (resolvedClass.defaultDescription || obj.description);
+
+        const tags = [...new Set([...(obj.tags || []), ...(resolvedClass.defaultTags || [])])];
+
+        const properties = { ...(obj.properties || {}) };
+        Object.entries(resolvedClass.defaultProperties || {}).forEach(([key, value]) => {
+          if (!(key in properties)) {
+            properties[key] = value;
+          }
+        });
+
+        return {
+          ...obj,
+          classId,
+          description,
+          tags,
+          properties
+        };
+      })
+    };
+  }),
 
   unassignClassFromObject: (objectId) => set((state) => ({
-    objects: state.objects.map(obj => 
+    objects: state.objects.map(obj =>
       obj.id === objectId ? { ...obj, classId: null } : obj
     )
   }))

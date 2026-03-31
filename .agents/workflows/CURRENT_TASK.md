@@ -5,29 +5,17 @@ description: Текущая задача проекта
 # CURRENT TASK
 
 ## Active Phase
-Phase 11C — Class Instance Application Strategy
+Waiting for next phase
 
 ## Goal
-Определить механику и логику применения свойств класса к объекту на сцене (перенос `defaultProperties`, `defaultTags`, `defaultDescription`).
+Phase 10D (Dev Scene Test Harness) has been successfully completed. 
+Waiting for the user to define the next objective.
 
-## Why this is the active task
-- Классы уже имеют данные хранения.
-- Для классов создан базовый UI.
-- Классы можно назначать объектам сцены.
-Но сейчас назначение класса (выбор `classId`) ничего реально не делает с объектом, кроме записи самой ссылки. Нужно определить, как класс будет влиять на instance.
+## Summary of Completed Phase 10D
+- Added `DevSceneHarness` component to inspect and inject JSON scenes without file downloads.
+- Integrated quick mutation dev buttons to inject broken links and test legacy JSON arrays.
+- Verified that store integration (`useCanvasStore.getState()`) and direct `import` validation trigger gracefully with valid/invalid payloads.
+- Added a floating, togglable test panel to the top-right corner inside `src/App.tsx`.
+- Updated `.agents/_agent_docs/ENGINE_LOG.md`.
 
-## What must be implemented
-Необходимо реализовать или спроектировать механику:
-1. Что должно происходить при назначении класса объекту?
-   - Копируются ли свойства в момент назначения (как шаблон)?
-   - Или они подтягиваются как fallback/override в рантайме или UI?
-2. Что делать, если класс меняется? Обновляются ли связанные с ним объекты?
-3. Внедрить выбранное поведение в `useCanvasStore.ts` (например, в действие `assignClassToObject`).
-
-## Required setup / Constraints
-- Не строить сложную систему prefab overrides (когда сохраняется дельта между классом и инстансом) без явной необходимости.
-- Решение должно быть максимально простым и явным для пользователя.
-- Не уходить в рантайм, оставаться в рамках "описания сцены".
-
-## Documentation
-Не забудьте обновить `ENGINE_LOG.md` и перевести `CURRENT_TASK.md` на следующую фазу после завершения.
+Ready for next instructions!

@@ -7,6 +7,7 @@ import { Box, Play, Download, Upload, Square, ListTree, User, Hexagon, FileText,
 import { Inspector } from './components/Inspector'
 import { LogicPanel } from './components/LogicPanel'
 import { ClassPanel } from './components/ClassPanel'
+import { DevSceneHarness } from './components/DevSceneHarness'
 
 import { validateAndFilterScene } from './utils/sceneValidation'
 
@@ -135,6 +136,7 @@ function App() {
 
       {/* UI LAYER (Properties, Toolbars, Menus) */}
       <div className="ui-layer">
+        <DevSceneHarness />
         
         {/* Top Toolbar */}
         <div className="toolbar engine-glass">

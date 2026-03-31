@@ -176,6 +176,19 @@ export const ClassPanel: React.FC = () => {
                     <option value="custom" style={{ color: 'black' }}>Custom</option>
                   </select>
                 </div>
+                <div style={{ flex: 1 }}>
+                  <span style={LabelStyle}>PARENT CLASS</span>
+                  <select
+                    value={selectedClass.parentClassId || ''}
+                    onChange={e => updateObjectClass(selectedClass.id, { parentClassId: e.target.value || null })}
+                    style={InputStyle}
+                  >
+                    <option value="" style={{ color: 'black' }}>None</option>
+                    {objectClasses.filter(c => c.id !== selectedClass.id).map(c => (
+                      <option key={c.id} value={c.id} style={{ color: 'black' }}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>

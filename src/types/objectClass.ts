@@ -6,4 +6,5 @@ export type ObjectClass = {
   defaultTags: string[];
   defaultProperties: Record<string, unknown>;
   defaultDescription: string;
+  parentClassId: string | null;
 };

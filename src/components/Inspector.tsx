@@ -3,7 +3,7 @@ import { useCanvasStore, LogicRef } from '../store/useCanvasStore';
 import { Settings, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
 
 export const Inspector: React.FC = () => {
-  const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject, objectClasses } = useCanvasStore();
+  const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject, objectClasses, assignClassToObject, unassignClassFromObject } = useCanvasStore();
   
   const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
 
@@ -174,7 +174,13 @@ export const Inspector: React.FC = () => {
               id="obj-class-id"
               name="objectClassId"
               value={selectedObject.classId || ''} 
-              onChange={(e) => updateObject(selectedObject.id, { classId: e.target.value || null })}
+              onChange={(e) => {
+                if (e.target.value) {
+                  assignClassToObject(selectedObject.id, e.target.value);
+                } else {
+                  unassignClassFromObject(selectedObject.id);
+                }
+              }}
               style={InputStyle}
             >
               <option value="">None</option>
