@@ -181,6 +181,19 @@ description: Use this skill when testing UI behavior, scene JSON flows, import/e
 
 ---
 
+## Test environment hygiene
+
+If UI/data testing requires a dev server or browser-related process:
+- prefer reusing an existing localhost server
+- avoid spawning duplicate `npm run dev` processes
+- stop temporary test processes when done
+- if a process remains running, explicitly report it
+
+Do not silently leave terminal sessions or test servers behind.
+
+
+---
+
 ## Как отмечать проблемы
 Если найден баг:
 - не размазывай;

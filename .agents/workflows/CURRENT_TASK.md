@@ -5,157 +5,111 @@ description: Текущая задача проекта
 # CURRENT TASK
 
 ## Active Phase
-Phase 12D — Create Object From Class
-
-## Status
-Verified complete on 2026-04-02.
-
-## Verification Summary
-- `Create Object From Class` added in `ClassPanel`
-- new object gets `classId`, `type` from class `baseType`, and safe resolved defaults
-- new object is auto-selected after creation
-- normal object creation and create-from-class now share the same base bootstrap helper
-- manual browser verification completed
-- targeted tests and build completed successfully
+Phase 13A — Override Visibility
 
 ## Goal
-Allow users to create a new scene object directly from an existing class/template, so class-based authoring becomes faster and more natural.
+Make it clear which object values already differ from class defaults, without adding a heavy override system.
 
 ## Why this is the active task
 The project already has:
-- object classes/templates
+- classes/templates
 - inheritance
 - safe class application
 - detach/reapply controls
-- Inspector class clarity
-- class impact preview
-- clean baseline
+- class clarity in Inspector
+- create-from-class workflow
 
-Right now class workflow is still indirect:
-1. create object
-2. assign class
-3. apply class
+Now the next usability gap is override visibility:
+users need to understand when an object still matches its class and when it already diverges from class defaults.
 
-This works, but is not the most natural workflow.
-
-The next practical step is direct creation:
-- choose a class
-- create object from that class
-- get a new scene object already initialized from class defaults
+This phase adds visibility only.
+It does not add live sync, destructive reset, or a full override editor.
 
 ## What must be implemented
 
-### 1. Add "Create Object From Class" action
-In `ClassPanel`, add a clear action:
-- `Create Object From Class`
+### 1. Show override status in Inspector
+For class-relevant object data, show whether the object currently:
+- matches class defaults
+- matches inherited defaults
+- differs from class defaults
 
-This should work for the currently selected class.
+At minimum cover:
+- Description
+- Tags
+- Custom Properties
 
-### 2. Create object with class already assigned
-When user creates an object from a class:
-- create a new scene object
-- set `classId`
-- use class `baseType` as object type
-- apply safe class defaults as initial object data
+### 2. Keep it lightweight
+Use compact section-level or summary-level indicators.
+Do not build a large diff system.
 
-That means:
-- description may be filled
-- tags may be added
-- properties may be added
-- inheritance-resolved defaults should be used if parent chain exists
+### 3. Make wording understandable
+Use wording that is clear for non-programmer workflow.
+Do not imply hidden sync or destructive behavior.
 
-### 3. Keep behavior safe and predictable
-Creation from class should:
-- not require a second manual "Apply Class" step
-- produce a valid scene object immediately
-- remain consistent with existing safe class application rules
-
-### 4. New object UX
-After creation:
-- object should appear in the scene
-- object should be selected automatically if this fits current editor flow
-- result should feel like normal object creation, not like a hidden background mutation
-
-### 5. Keep it minimal
-This phase is not for:
-- prefab system
-- object factory browser
-- spawn wizard
-- advanced placement tool
-- asset workflow expansion
-
-Just one clean direct-create flow.
+### 4. Keep current class behavior unchanged
+Do not change:
+- assign
+- detach
+- reapply
+- create-from-class
+- inheritance mechanics
 
 ## Scope boundaries
 
 ### Allowed
-- add create-from-class action in `ClassPanel`
-- add store logic to create object from class
-- reuse current safe apply/inheritance logic
-- minimally update selection behavior if needed
+- improve Inspector visibility
+- add compact override indicators
+- add helper logic for comparison against resolved class defaults
 
 ### Not allowed
-- no prefab instances
-- no override system
+- no override editor
 - no live sync
+- no prefab system
 - no graph view
-- no runtime execution
 - no scripting system
-- no large ClassPanel redesign
-- no broad scene placement tools
+- no runtime changes
+- no large Inspector redesign
 
 ## Likely relevant files
-- `src/components/ClassPanel.tsx`
-- `src/store/useCanvasStore.ts`
-- `src/types/objectClass.ts`
-- existing class/inheritance helpers
+- `src/components/Inspector.tsx`
+- `src/utils/classSourceHints.ts`
+- class/inheritance helpers if needed
 
 ## Acceptance criteria
 This phase is complete only if all of the following are true:
 
-1. User can create an object directly from selected class
-2. New object gets correct `classId`
-3. New object gets correct `type` from class `baseType`
-4. Safe defaults are applied on creation
-5. Inheritance-resolved defaults are used if needed
-6. New object appears in scene without broken state
-7. Flow remains simple and readable
+1. User can tell whether object values still match class defaults
+2. User can tell when object values differ from class defaults
+3. Inherited defaults are considered correctly
+4. UI stays compact and readable
+5. Existing class workflow remains stable
 
 ## Required manual verification
 After implementation, explicitly verify:
 
-### Scenario A — basic create
-1. create a class
-2. click `Create Object From Class`
-3. confirm object appears in scene
+### Scenario A — matches class
+1. create object from class
+2. confirm Inspector shows it still matches class defaults
 
-### Scenario B — assigned class
-1. inspect created object
-2. confirm correct `classId` is assigned
+### Scenario B — diverges
+1. change object description/tag/property manually
+2. confirm Inspector now shows difference from class defaults
 
-### Scenario C — safe defaults applied
-1. create object from class with description/tags/properties
-2. confirm defaults are present on created object
+### Scenario C — inherited match
+1. use child class with parent
+2. confirm inherited defaults are considered correctly
 
-### Scenario D — inheritance
-1. create object from child class with parent
-2. confirm inherited defaults are also applied
-
-### Scenario E — editor flow
-1. create multiple objects from classes
-2. confirm editor remains stable and understandable
+### Scenario D — readability
+1. inspect several objects
+2. confirm UI remains understandable and not cluttered
 
 ## Output expectations for the agent
 After completion, the agent must report:
 
 1. What was added
 2. Which files were modified
-3. How create-from-class now works
-4. How inheritance affects created objects
-5. What was intentionally NOT done
-6. Which risks / open points remain
-7. What was manually verified
-
-## Documentation update required after completion
-- update `.agents/_agent_docs/ENGINE_LOG.md`
-- update `.agents/workflows/CURRENT_TASK.md` only after this phase is truly verified
+3. How override visibility now works
+4. What was intentionally NOT done
+5. Which risks / open points remain
+6. What was manually verified
+7. Whether dev server was started/stopped and on which port

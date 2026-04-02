@@ -127,3 +127,28 @@ export const applyMissingResolvedClassDefaults = (
     }
   };
 };
+
+export type ClassCreationSummary = {
+  resultingType: 'box' | 'zone' | 'unit' | 'custom';
+  parentInvolved: boolean;
+  hasDescription: boolean;
+  tagsCount: number;
+  propertiesCount: number;
+};
+
+export const getClassCreationSummary = (
+  classId: string,
+  objectClasses: ObjectClass[]
+): ClassCreationSummary | null => {
+  const resolved = resolveInheritedClassDefaults(classId, objectClasses);
+  if (!resolved) return null;
+
+  return {
+    resultingType: resolved.baseType || 'box', // ensure fallback to box if baseType is somehow broken
+    parentInvolved: resolved.chain.length > 1,
+    hasDescription: Boolean(resolved.defaultDescription && resolved.defaultDescription.trim() !== ''),
+    tagsCount: resolved.defaultTags?.length || 0,
+    propertiesCount: Object.keys(resolved.defaultProperties || {}).length
+  };
+};
+

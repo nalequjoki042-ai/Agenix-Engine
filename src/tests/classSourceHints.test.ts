@@ -113,12 +113,12 @@ describe('class source hints (heuristic, non-provenance)', () => {
     });
 
     const result = getClassSourceHints(object, [parentClass, childClass]);
-    expect(result.hints.description).toBe('local / other');
+    expect(result.hints.description).toBe('differs from class defaults');
     expect(result.hints.tags).toBe('mixed');
     expect(result.hints.properties).toBe('mixed');
   });
 
-  it('uses local / other fallback for uncertain matches', () => {
+  it('identifies values differing from class defaults', () => {
     const objectClass = makeClass({
       id: 'class-a',
       defaultDescription: 'Class desc',
@@ -133,9 +133,9 @@ describe('class source hints (heuristic, non-provenance)', () => {
     });
 
     const result = getClassSourceHints(object, [objectClass]);
-    expect(result.hints.description).toBe('local / other');
-    expect(result.hints.tags).toBe('local / other');
-    expect(result.hints.properties).toBe('local / other');
+    expect(result.hints.description).toBe('differs from class defaults');
+    expect(result.hints.tags).toBe('differs from class defaults');
+    expect(result.hints.properties).toBe('differs from class defaults');
   });
 
   it('handles broken class link with safe local / other fallback', () => {

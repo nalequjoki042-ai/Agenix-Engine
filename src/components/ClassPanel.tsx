@@ -6,6 +6,7 @@ import {
   getClassParentUiState,
   getInvalidParentSelectionReason
 } from '../utils/classParentUi';
+import { getClassCreationSummary } from '../utils/classDefaults';
 
 export const ClassPanel: React.FC = () => {
   const { objectClasses, createObjectClass, updateObjectClass, deleteObjectClass, createObjectFromClass } = useCanvasStore();
@@ -19,6 +20,35 @@ export const ClassPanel: React.FC = () => {
   const [newPropKey, setNewPropKey] = useState('');
   const [newPropValue, setNewPropValue] = useState('');
   const [parentFeedback, setParentFeedback] = useState<string | null>(null);
+
+  // Creation feedback state
+  const [creationFeedback, setCreationFeedback] = useState<{ message: string; timestamp: number } | null>(null);
+
+  // Clear feedback on class change or unmount
+  React.useEffect(() => {
+    setCreationFeedback(null);
+  }, [selectedClassId]);
+
+  React.useEffect(() => {
+    if (!creationFeedback) return;
+    const timer = setTimeout(() => {
+      setCreationFeedback(null);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [creationFeedback]);
+
+  const handleCreateFromClass = () => {
+    if (!selectedClass) return;
+    createObjectFromClass(selectedClass.id);
+    
+    // Immediately read the state to get the created object
+    const state = useCanvasStore.getState();
+    const selectedId = state.selectedObjectIds[0];
+    const selectedObj = state.objects.find(obj => obj.id === selectedId);
+    if (selectedObj) {
+      setCreationFeedback({ message: `Created and selected: ${selectedObj.name}`, timestamp: Date.now() });
+    }
+  };
 
   const filteredItems = objectClasses.filter(c => {
     if (!searchQuery) return true;
@@ -250,23 +280,66 @@ export const ClassPanel: React.FC = () => {
                 </div>
               </div>
 
-              <div>
+              {/* CREATE FROM CLASS CARD */}
+              <div style={{
+                background: 'rgba(100,108,255,0.1)',
+                border: '1px solid rgba(100,108,255,0.3)',
+                borderRadius: 8,
+                padding: 12,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                marginBottom: 12
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 'bold', color: '#cfd3ff' }}>Create Object</div>
+                
+                {(() => {
+                  const summary = selectedClass ? getClassCreationSummary(selectedClass.id, objectClasses) : null;
+                  if (!summary) return null;
+                  return (
+                    <div style={{ fontSize: 11, color: '#aaa', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div>Creation uses resolved class defaults. {summary.parentInvolved ? 'Parent chain included.' : ''}</div>
+                      <div style={{ display: 'flex', gap: 12, background: 'rgba(0,0,0,0.2)', padding: '6px 8px', borderRadius: 4 }}>
+                        <div><span style={{ color: '#888' }}>Resulting Type:</span> <span style={{ color: 'white' }}>{summary.resultingType}</span></div>
+                        <div><span style={{ color: '#888' }}>Parent Defaults:</span> <span style={{ color: 'white' }}>{summary.parentInvolved ? 'Included' : 'Not involved'}</span></div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, padding: '0 8px' }}>
+                        <div><span style={{ color: '#888' }}>Description:</span> <span style={{ color: 'white' }}>{summary.hasDescription ? 'yes' : 'no'}</span></div>
+                        <div><span style={{ color: '#888' }}>Tags:</span> <span style={{ color: 'white' }}>{summary.tagsCount}</span></div>
+                        <div><span style={{ color: '#888' }}>Properties:</span> <span style={{ color: 'white' }}>{summary.propertiesCount}</span></div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <button
-                  onClick={() => createObjectFromClass(selectedClass.id)}
+                  onClick={handleCreateFromClass}
                   style={{
                     width: '100%',
-                    background: 'rgba(100,108,255,0.2)',
+                    background: 'rgba(100,108,255,0.25)',
                     border: '1px solid rgba(100,108,255,0.5)',
-                    color: '#cfd3ff',
+                    color: 'white',
                     borderRadius: 6,
                     cursor: 'pointer',
                     padding: '8px 10px',
                     fontSize: 12,
-                    marginBottom: 12
+                    fontWeight: 'bold',
+                    marginTop: 4
                   }}
                 >
                   Create Object From Class
                 </button>
+                <div style={{ fontSize: 10, color: '#888', textAlign: 'center' }}>
+                  Creates and selects a new object from resolved class defaults.
+                </div>
+                {creationFeedback && (
+                  <div style={{ fontSize: 11, color: '#4ade80', textAlign: 'center', marginTop: 4 }}>
+                    {creationFeedback.message}
+                  </div>
+                )}
+              </div>
+
+              <div>
                 <span style={LabelStyle}>CLASS DESCRIPTION</span>
                 <textarea
                   value={selectedClass.description}

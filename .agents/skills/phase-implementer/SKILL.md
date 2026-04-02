@@ -193,6 +193,21 @@ description: Use this skill when implementing the current project phase from CUR
 
 ---
 
+## Process hygiene
+
+If implementation requires `npm run dev`, test runners, or extra terminal processes:
+- reuse existing running processes where possible
+- avoid starting duplicate dev servers
+- stop temporary processes after verification
+- if a process remains running intentionally, explicitly say so in the report
+
+Always include in the final report:
+- started process or not
+- still running or stopped
+- relevant port if applicable
+
+---
+
 ## Специальное правило для Agenix
 Если задача связана с классами, text logic, import/export, validation или inheritance:
 - предпочтение всегда отдаётся **понятному и безопасному поведению**,

@@ -120,6 +120,9 @@ export const Inspector: React.FC = () => {
     if (hint === 'mixed') {
       return { border: '1px solid rgba(255,193,7,0.55)', color: '#ffe6a3' };
     }
+    if (hint === 'differs from class defaults') {
+      return { border: '1px solid rgba(255,152,0,0.55)', color: '#ffcc80' };
+    }
     return { border: '1px solid rgba(255,255,255,0.22)', color: '#c0c0c0' };
   };
 

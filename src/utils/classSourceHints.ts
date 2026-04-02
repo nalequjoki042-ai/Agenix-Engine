@@ -5,6 +5,7 @@ export type ClassHint =
   | 'matches class defaults'
   | 'matches inherited defaults'
   | 'mixed'
+  | 'differs from class defaults'
   | 'local / other';
 
 export type ClassSummaryState =
@@ -150,16 +151,11 @@ const classifyDescriptionHint = (
   if (!defaults) return HINT_LOCAL;
 
   const value = (objectValue || '').trim();
-  if (!value) return HINT_LOCAL;
-
-  const directMatch = defaults.directDescription !== '' && value === defaults.directDescription;
-  const inheritedMatch =
-    defaults.inheritedDescription !== '' && value === defaults.inheritedDescription;
-
-  if (directMatch && inheritedMatch) return 'mixed';
-  if (directMatch) return 'matches class defaults';
-  if (inheritedMatch) return 'matches inherited defaults';
-  return HINT_LOCAL;
+  
+  if (value === defaults.directDescription) return 'matches class defaults';
+  if (defaults.inheritedDescription !== '' && value === defaults.inheritedDescription) return 'matches inherited defaults';
+  
+  return 'differs from class defaults';
 };
 
 const classifyTagsHint = (
@@ -169,34 +165,27 @@ const classifyTagsHint = (
   if (!defaults) return HINT_LOCAL;
 
   const tags = normalizeTags(objectTags);
-  if (tags.length === 0) return HINT_LOCAL;
 
-  let hasDirectMatch = false;
-  let hasInheritedMatch = false;
-  let hasOther = false;
+  const exactDirectMatch = tags.length === defaults.directTags.size && 
+    tags.every(t => defaults.directTags.has(t));
+    
+  if (exactDirectMatch) return 'matches class defaults';
 
-  tags.forEach(tag => {
-    const isDirect = defaults.directTags.has(tag);
-    const isInherited = defaults.inheritedTags.has(tag);
+  const exactInheritedMatch = defaults.inheritedTags.size > 0 && tags.length === defaults.inheritedTags.size && 
+    tags.every(t => defaults.inheritedTags.has(t));
 
-    if (!isDirect && !isInherited) {
-      hasOther = true;
-      return;
+  if (exactInheritedMatch) return 'matches inherited defaults';
+
+  let hasAnyMatch = false;
+  tags.forEach(t => {
+    if (defaults.directTags.has(t) || defaults.inheritedTags.has(t)) {
+      hasAnyMatch = true;
     }
-
-    if (isDirect) hasDirectMatch = true;
-    if (isInherited) hasInheritedMatch = true;
   });
 
-  if (hasOther) {
-    if (hasDirectMatch || hasInheritedMatch) return 'mixed';
-    return HINT_LOCAL;
-  }
+  if (hasAnyMatch) return 'mixed';
 
-  if (hasDirectMatch && hasInheritedMatch) return 'mixed';
-  if (hasDirectMatch) return 'matches class defaults';
-  if (hasInheritedMatch) return 'matches inherited defaults';
-  return HINT_LOCAL;
+  return 'differs from class defaults';
 };
 
 const classifyPropertiesHint = (
@@ -206,43 +195,32 @@ const classifyPropertiesHint = (
   if (!defaults) return HINT_LOCAL;
 
   const entries = Object.entries(objectProperties);
-  if (entries.length === 0) return HINT_LOCAL;
+  const directEntries = Object.entries(defaults.directProperties);
+  const inheritedEntries = Object.entries(defaults.inheritedProperties);
 
-  let hasDirectMatch = false;
-  let hasInheritedMatch = false;
-  let hasOther = false;
+  const exactDirectMatch = entries.length === directEntries.length &&
+    entries.every(([k, v]) => k in defaults.directProperties && deepEqual(v, defaults.directProperties[k]));
 
-  entries.forEach(([key, value]) => {
-    if (key in defaults.directProperties) {
-      if (deepEqual(value, defaults.directProperties[key])) {
-        hasDirectMatch = true;
-      } else {
-        hasOther = true;
-      }
-      return;
+  if (exactDirectMatch) return 'matches class defaults';
+
+  const exactInheritedMatch = inheritedEntries.length > 0 && entries.length === inheritedEntries.length &&
+    entries.every(([k, v]) => k in defaults.inheritedProperties && deepEqual(v, defaults.inheritedProperties[k]));
+
+  if (exactInheritedMatch) return 'matches inherited defaults';
+
+  let hasAnyMatch = false;
+  entries.forEach(([k, v]) => {
+    if (k in defaults.directProperties && deepEqual(v, defaults.directProperties[k])) {
+      hasAnyMatch = true;
     }
-
-    if (key in defaults.inheritedProperties) {
-      if (deepEqual(value, defaults.inheritedProperties[key])) {
-        hasInheritedMatch = true;
-      } else {
-        hasOther = true;
-      }
-      return;
+    if (k in defaults.inheritedProperties && deepEqual(v, defaults.inheritedProperties[k])) {
+      hasAnyMatch = true;
     }
-
-    hasOther = true;
   });
 
-  if (hasOther) {
-    if (hasDirectMatch || hasInheritedMatch) return 'mixed';
-    return HINT_LOCAL;
-  }
+  if (hasAnyMatch) return 'mixed';
 
-  if (hasDirectMatch && hasInheritedMatch) return 'mixed';
-  if (hasDirectMatch) return 'matches class defaults';
-  if (hasInheritedMatch) return 'matches inherited defaults';
-  return HINT_LOCAL;
+  return 'differs from class defaults';
 };
 
 const buildSummary = (
