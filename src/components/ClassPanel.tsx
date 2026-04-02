@@ -8,7 +8,7 @@ import {
 } from '../utils/classParentUi';
 
 export const ClassPanel: React.FC = () => {
-  const { objectClasses, createObjectClass, updateObjectClass, deleteObjectClass } = useCanvasStore();
+  const { objectClasses, createObjectClass, updateObjectClass, deleteObjectClass, createObjectFromClass } = useCanvasStore();
   
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -251,6 +251,22 @@ export const ClassPanel: React.FC = () => {
               </div>
 
               <div>
+                <button
+                  onClick={() => createObjectFromClass(selectedClass.id)}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(100,108,255,0.2)',
+                    border: '1px solid rgba(100,108,255,0.5)',
+                    color: '#cfd3ff',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    padding: '8px 10px',
+                    fontSize: 12,
+                    marginBottom: 12
+                  }}
+                >
+                  Create Object From Class
+                </button>
                 <span style={LabelStyle}>CLASS DESCRIPTION</span>
                 <textarea
                   value={selectedClass.description}

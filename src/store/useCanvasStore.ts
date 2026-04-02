@@ -2,6 +2,15 @@ import { create } from 'zustand'
 import { LogicTextItem } from '../types/logic'
 import { ObjectClass } from '../types/objectClass'
 import { getInvalidParentSelectionReason } from '../utils/classParentUi'
+import {
+  applyMissingResolvedClassDefaults,
+  resolveInheritedClassDefaults
+} from '../utils/classDefaults'
+import {
+  createBaseObjectByType,
+  getCameraCenterSpawnPosition,
+  isValidObjectType
+} from '../utils/objectCreation'
 
 export type LogicRef = {
   id: string;
@@ -71,86 +80,9 @@ interface CanvasState {
   updateObjectClass: (id: string, patch: Partial<ObjectClass>) => void
   deleteObjectClass: (id: string) => void
   assignClassToObject: (objectId: string, classId: string) => void
+  createObjectFromClass: (classId: string) => void
   reapplyMissingClassDefaults: (objectId: string) => void
   unassignClassFromObject: (objectId: string) => void
-}
-
-function resolveInheritedClass(classId: string, objectClasses: ObjectClass[]): Partial<ObjectClass> | null {
-  const visited = new Set<string>();
-  let currentClassId: string | null = classId;
-  const chain: ObjectClass[] = [];
-
-  while (currentClassId) {
-    if (visited.has(currentClassId)) {
-      console.warn(`[Agenix Inheritance] Cyclic inheritance detected at class ${currentClassId}. Breaking loop.`);
-      break;
-    }
-    visited.add(currentClassId);
-    
-    const cls = objectClasses.find(c => c.id === currentClassId);
-    if (!cls) break;
-    
-    chain.push(cls);
-    currentClassId = cls.parentClassId || null;
-  }
-
-  if (chain.length === 0) return null;
-
-  chain.reverse();
-
-  let resolvedDescription = '';
-  let resolvedTags: string[] = [];
-  const resolvedProperties: Record<string, unknown> = {};
-  let resolvedBaseType: 'box' | 'zone' | 'unit' | 'custom' = 'box';
-
-  chain.forEach(cls => {
-    if (cls.defaultDescription && cls.defaultDescription.trim() !== '') {
-      resolvedDescription = cls.defaultDescription;
-    }
-    if (cls.defaultTags && cls.defaultTags.length > 0) {
-      resolvedTags = [...new Set([...resolvedTags, ...cls.defaultTags])];
-    }
-    if (cls.defaultProperties) {
-      Object.assign(resolvedProperties, cls.defaultProperties);
-    }
-    if (cls.baseType) {
-      resolvedBaseType = cls.baseType;
-    }
-  });
-
-  return {
-    defaultDescription: resolvedDescription,
-    defaultTags: resolvedTags,
-    defaultProperties: resolvedProperties,
-    baseType: resolvedBaseType
-  };
-}
-
-function applyMissingClassDefaults(
-  object: GameObject,
-  resolvedClass: Partial<ObjectClass>,
-  nextClassId?: string | null
-): GameObject {
-  const description = (object.description && object.description.trim() !== '')
-    ? object.description
-    : (resolvedClass.defaultDescription || object.description);
-
-  const tags = [...new Set([...(object.tags || []), ...(resolvedClass.defaultTags || [])])];
-
-  const properties = { ...(object.properties || {}) };
-  Object.entries(resolvedClass.defaultProperties || {}).forEach(([key, value]) => {
-    if (!(key in properties)) {
-      properties[key] = value;
-    }
-  });
-
-  return {
-    ...object,
-    classId: nextClassId !== undefined ? nextClassId : object.classId,
-    description,
-    tags,
-    properties
-  };
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
@@ -298,7 +230,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   })),
 
   assignClassToObject: (objectId, classId) => set((state) => {
-    const resolvedClass = resolveInheritedClass(classId, state.objectClasses);
+    const resolvedClass = resolveInheritedClassDefaults(classId, state.objectClasses);
     if (!resolvedClass) {
       return {
         objects: state.objects.map(obj =>
@@ -310,8 +242,47 @@ export const useCanvasStore = create<CanvasState>((set) => ({
     return {
       objects: state.objects.map(obj => {
         if (obj.id !== objectId) return obj;
-        return applyMissingClassDefaults(obj, resolvedClass, classId);
+        return applyMissingResolvedClassDefaults(obj, resolvedClass, classId);
       })
+    };
+  }),
+
+  createObjectFromClass: (classId) => set((state) => {
+    const targetClass = state.objectClasses.find(objectClass => objectClass.id === classId);
+    if (!targetClass) {
+      console.warn(`[Agenix Class] Cannot create object: class "${classId}" not found.`);
+      return {};
+    }
+
+    const resolvedClass = resolveInheritedClassDefaults(classId, state.objectClasses);
+    if (!resolvedClass) {
+      return {};
+    }
+
+    let objectType = resolvedClass.baseType;
+    if (!isValidObjectType(objectType)) {
+      console.warn(`[Agenix Class] Invalid baseType "${String(resolvedClass.baseType)}" on class "${classId}". Falling back to "box".`);
+      objectType = 'box';
+    }
+
+    const spawn = getCameraCenterSpawnPosition(state.camera);
+    if (spawn.usedFallback) {
+      console.warn('[Agenix Class] Could not resolve camera-center spawn position. Falling back to (0, 0).');
+    }
+
+    const baseObject = createBaseObjectByType({
+      type: objectType,
+      position: spawn.position,
+      existingObjects: state.objects,
+      preferredName: targetClass.name,
+      classId
+    });
+
+    const createdObject = applyMissingResolvedClassDefaults(baseObject, resolvedClass, classId);
+
+    return {
+      objects: [...state.objects, createdObject],
+      selectedObjectIds: [createdObject.id]
     };
   }),
 
@@ -321,7 +292,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
       return {};
     }
 
-    const resolvedClass = resolveInheritedClass(targetObject.classId, state.objectClasses);
+    const resolvedClass = resolveInheritedClassDefaults(targetObject.classId, state.objectClasses);
     if (!resolvedClass) {
       console.warn(`[Agenix Class] Cannot reapply defaults: class "${targetObject.classId}" not found.`);
       return {};
@@ -330,7 +301,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
     return {
       objects: state.objects.map(obj =>
         obj.id === objectId
-          ? applyMissingClassDefaults(obj, resolvedClass)
+          ? applyMissingResolvedClassDefaults(obj, resolvedClass)
           : obj
       )
     };

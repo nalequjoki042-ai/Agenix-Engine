@@ -652,6 +652,122 @@ ClassPanel стал понятнее и безопаснее при редакт
 
 ---
 
+## [2026-04-02] Phase 12C: Class Impact Preview
+**Статус:** Завершено
+
+### Кратко
+В Inspector добавлен компактный preview того, что class assignment или `Reapply Missing Defaults` добавят в объект. Preview показывает только missing additions, учитывает inheritance chain и не меняет данные до явного действия пользователя.
+
+### Что было сделано
+- Добавлен helper `src/utils/classDefaults.ts`:
+  - `resolveInheritedClassDefaults` для resolution parent chain;
+  - `getMissingClassAdditions` для точного расчёта только missing description/tags/properties;
+  - `applyMissingResolvedClassDefaults` как общая safe-apply функция.
+- `src/store/useCanvasStore.ts` переведён на общий helper:
+  - `assignClassToObject` и `reapplyMissingClassDefaults` теперь используют ту же resolution/apply логику, что и preview.
+- Добавлен helper `src/utils/classImpactPreview.ts`:
+  - вычисляет preview mode (`assign` / `reapply`);
+  - формирует compact preview для description, tags и properties;
+  - показывает `Nothing to add` state;
+  - добавляет inheritance note, если участвует parent chain.
+- В `src/components/Inspector.tsx` обновлён class workflow:
+  - selector `CLASS ID` теперь сначала меняет pending class selection для preview;
+  - появилось явное действие `Apply Class`;
+  - preview показывает, что будет добавлено до применения;
+  - `Reapply Missing Defaults` по-прежнему работает отдельно для already assigned class.
+- Добавлен unit-test файл `src/tests/classImpactPreview.test.ts`:
+  - assign preview only missing additions;
+  - reapply preview with partial object state;
+  - nothing-to-add state;
+  - inheritance-aware preview;
+  - no hidden mutation while preview is computed.
+
+### Что сознательно НЕ делалось
+- Не добавлялся override matrix.
+- Не делался большой diff viewer.
+- Не добавлялся live sync.
+- Не добавлялся destructive reset.
+- Не расширялась prefab system.
+- Не делался большой редизайн Inspector.
+
+### Что именно проверено
+- Автотесты:
+  - `npx vitest run src/tests/classImpactPreview.test.ts src/tests/classActions.test.ts src/tests/classParentUi.test.ts src/tests/classSourceHints.test.ts src/tests/sceneSerialization.test.ts` -> **35/35 passed**.
+  - `npm run build` -> **успешно**.
+- Ручная browser / Dev JSON verification:
+  - Scenario 1: assign preview — пройден.
+  - Scenario 2: reapply preview — пройден.
+  - Scenario 3: nothing missing — пройден.
+  - Scenario 4: inheritance preview — пройден.
+  - Scenario 5: no hidden mutation before explicit action — пройден.
+
+### Process hygiene
+- Для верификации запускался временный `npm run dev` на порту `4177`.
+- Процесс dev-сервера остановлен после проверки.
+
+### Следующий шаг
+Ожидаются дальнейшие указания пользователя.
+
+---
+
+## [2026-04-02] Phase 12D: Create Object From Class
+**Статус:** Завершено
+
+### Кратко
+В `ClassPanel` добавлен прямой flow `Create Object From Class`. Теперь пользователь может создать scene object сразу из выбранного класса без промежуточного ручного `Apply Class`, а обычное создание объектов и create-from-class используют один и тот же базовый bootstrap.
+
+### Что было сделано
+- Добавлен общий helper `src/utils/objectCreation.ts`:
+  - `createBaseObjectByType(...)` для единого bootstrap нового объекта;
+  - `getUniqueObjectName(...)` для общего naming behavior (`Name`, `Name 2`, `Name 3`);
+  - `getCameraCenterSpawnPosition(...)` для spawn в центре камеры с safe fallback в `(0, 0)`;
+  - `isValidObjectType(...)` для безопасной проверки `baseType`.
+- `src/App.tsx` переведён на `createBaseObjectByType(...)`, чтобы обычный context-menu create flow не расходился с create-from-class по дефолтам имени/размера/цвета.
+- В `src/store/useCanvasStore.ts` добавлен action `createObjectFromClass(classId)`:
+  - находит класс;
+  - resolve'ит inheritance defaults;
+  - берёт `type` из `baseType` или безопасно падает в `box` с `console.warn`, если `baseType` битый;
+  - вычисляет spawn в центре камеры или безопасно падает в `(0, 0)` с `console.warn`, если центр нельзя вычислить;
+  - создаёт базовый объект через общий helper;
+  - назначает `classId`;
+  - применяет inheritance-resolved safe defaults;
+  - сразу выделяет новый объект.
+- В `src/components/ClassPanel.tsx` добавлена кнопка `Create Object From Class` для текущего выбранного класса.
+- Добавлены тесты:
+  - `src/tests/objectCreation.test.ts`
+  - `src/tests/createObjectFromClass.test.ts`
+
+### Что сознательно НЕ делалось
+- Не добавлялась prefab/instance система.
+- Не добавлялся spawn wizard.
+- Не добавлялся asset browser.
+- Не менялся runtime behavior классов за пределами нового create shortcut.
+- Не делался большой редизайн ClassPanel.
+
+### Что именно проверено
+- Автотесты:
+  - `npx vitest run src/tests/objectCreation.test.ts src/tests/createObjectFromClass.test.ts src/tests/classImpactPreview.test.ts src/tests/classActions.test.ts src/tests/classParentUi.test.ts src/tests/classSourceHints.test.ts src/tests/sceneSerialization.test.ts` -> **51/51 passed**.
+  - `npm run build` -> **успешно**.
+- Ручная browser / Dev JSON verification:
+  - normal create из `App.tsx` после выноса helper по-прежнему работает;
+  - naming для normal create инкрементируется (`Box`, `Box 2`);
+  - normal create сохраняет прежние bootstrap defaults (`type`, `width`, `height`, `color`);
+  - `Create Object From Class` создаёт объект и сразу выделяет его;
+  - новый объект получает корректный `classId` и `type`;
+  - safe defaults применяются сразу при создании;
+  - child class корректно получает inherited defaults;
+  - repeated create-from-class даёт уникальные имена;
+  - editor остаётся стабильным при создании нескольких объектов подряд.
+
+### Process hygiene
+- Для верификации запускался временный `npm run dev` на порту `4178`.
+- После проверки процесс dev-сервера был остановлен.
+
+### Следующий шаг
+Ожидаются дальнейшие указания пользователя.
+
+---
+
 ## [2026-03-31] Phase 11E: Class Detach / Reapply Controls
 **Статус:** Завершено
 

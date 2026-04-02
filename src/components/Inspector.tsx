@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCanvasStore, LogicRef } from '../store/useCanvasStore';
 import { Settings, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
 import { getClassSourceHints, ClassHint } from '../utils/classSourceHints';
+import { getClassImpactPreview } from '../utils/classImpactPreview';
 
 export const Inspector: React.FC = () => {
   const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject, objectClasses, assignClassToObject, reapplyMissingClassDefaults, unassignClassFromObject } = useCanvasStore();
@@ -11,6 +12,11 @@ export const Inspector: React.FC = () => {
 
   const [newPropKey, setNewPropKey] = useState('');
   const [newPropValue, setNewPropValue] = useState('');
+  const [pendingClassId, setPendingClassId] = useState('');
+
+  useEffect(() => {
+    setPendingClassId(selectedObject?.classId || '');
+  }, [selectedObject?.id, selectedObject?.classId]);
 
   if (!selectedObject) return null;
 
@@ -101,6 +107,8 @@ export const Inspector: React.FC = () => {
   const relatedLogicItems = logicItems.filter(item => item.relatedObjectIds.includes(selectedObject.id));
 
   const classInsight = getClassSourceHints(selectedObject, objectClasses);
+  const classPreview = getClassImpactPreview(selectedObject, pendingClassId || null, objectClasses);
+  const hasPendingClassChange = Boolean(pendingClassId) && pendingClassId !== (selectedObject.classId || '');
 
   const getHintStyle = (hint: ClassHint) => {
     if (hint === 'matches class defaults') {
@@ -205,14 +213,8 @@ export const Inspector: React.FC = () => {
             <select 
               id="obj-class-id"
               name="objectClassId"
-              value={selectedObject.classId || ''} 
-              onChange={(e) => {
-                if (e.target.value) {
-                  assignClassToObject(selectedObject.id, e.target.value);
-                } else {
-                  unassignClassFromObject(selectedObject.id);
-                }
-              }}
+              value={pendingClassId} 
+              onChange={(e) => setPendingClassId(e.target.value)}
               style={InputStyle}
             >
               <option value="">None</option>
@@ -244,9 +246,85 @@ export const Inspector: React.FC = () => {
           </div>
         </div>
 
+        <div style={{ marginBottom: 12, padding: 10, borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 6, alignItems: 'center' }}>
+            <div style={{ fontSize: 11, color: '#9aa1aa', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+              {classPreview.mode === 'reapply' ? 'Reapply Preview' : 'Assign Preview'}
+            </div>
+            {classPreview.mode !== 'none' && classPreview.mode !== 'unavailable' && (
+              <div style={{ fontSize: 11, color: '#ddd' }}>
+                {classPreview.targetClassName}
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: '#8d96a0', marginBottom: 6 }}>
+            {classPreview.note}
+          </div>
+          {classPreview.inheritanceNote && (
+            <div style={{ fontSize: 10, color: '#79828d', marginBottom: 8 }}>
+              {classPreview.inheritanceNote}
+            </div>
+          )}
+          {classPreview.mode === 'none' || classPreview.mode === 'unavailable' ? null : classPreview.hasAdditions ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {classPreview.description && (
+                <div style={{ fontSize: 11, color: '#d9dce2' }}>
+                  <strong>Description:</strong> {classPreview.description}
+                </div>
+              )}
+              {classPreview.tags.length > 0 && (
+                <div style={{ fontSize: 11, color: '#d9dce2' }}>
+                  <strong>Tags:</strong> +{classPreview.tags.join(', ')}
+                </div>
+              )}
+              {classPreview.properties.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div style={{ fontSize: 11, color: '#d9dce2' }}>
+                    <strong>Properties:</strong>
+                  </div>
+                  {classPreview.properties.map(property => (
+                    <div key={property.key} style={{ fontSize: 11, color: '#c2c8d0', paddingLeft: 8 }}>
+                      + {property.key}: {String(property.value)}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: '#c8d0da' }}>
+              Nothing to add.
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 8 }}>
+          <button
+            onClick={() => {
+              if (!pendingClassId) return;
+              assignClassToObject(selectedObject.id, pendingClassId);
+            }}
+            disabled={!hasPendingClassChange}
+            style={{
+              width: '100%',
+              background: hasPendingClassChange ? 'rgba(100,108,255,0.2)' : 'rgba(100,108,255,0.06)',
+              border: '1px solid rgba(100,108,255,0.5)',
+              color: hasPendingClassChange ? '#cfd3ff' : '#666',
+              borderRadius: 4,
+              cursor: hasPendingClassChange ? 'pointer' : 'not-allowed',
+              padding: '6px 8px',
+              fontSize: 12
+            }}
+          >
+            Apply Class
+          </button>
+        </div>
+
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <button
-            onClick={() => unassignClassFromObject(selectedObject.id)}
+            onClick={() => {
+              unassignClassFromObject(selectedObject.id);
+              setPendingClassId('');
+            }}
             disabled={!hasAssignedClass}
             style={{
               flex: 1,
@@ -279,6 +357,7 @@ export const Inspector: React.FC = () => {
           </button>
         </div>
         <div style={{ fontSize: 11, color: '#777', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span>Choose a class to preview it first, then use Apply Class.</span>
           <span>Detach Class removes class link only.</span>
           <span>Reapply Missing Defaults fills only missing values.</span>
         </div>

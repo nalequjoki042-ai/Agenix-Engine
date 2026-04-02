@@ -3,6 +3,7 @@ import { EngineCanvas } from './components/canvas/EngineCanvas'
 import { useUIStore } from './store/useUIStore'
 import { useCanvasStore } from './store/useCanvasStore'
 import { Box, Play, Download, Upload, Square, ListTree, User, Hexagon, FileText, Library } from 'lucide-react'
+import { createBaseObjectByType } from './utils/objectCreation'
 
 import { Inspector } from './components/Inspector'
 import { LogicPanel } from './components/LogicPanel'
@@ -87,38 +88,16 @@ function App() {
 
   const handleCreateObject = (type: 'box' | 'zone' | 'unit') => {
     if (!contextMenu) return
-    const id = Math.random().toString(36).substr(2, 9)
-    
-    let color = '#646cff';
-    if (type === 'zone') color = 'rgba(255, 100, 100, 0.5)';
-    if (type === 'unit') color = '#4CAF50';
-    
-    let name = 'Box';
-    if (type === 'zone') name = 'Zone';
-    if (type === 'unit') name = 'Unit';
-
-    addObject({
-      id,
-      name,
-      type,
-      classId: null,
-      parentId: null,
-      childrenIds: [],
-      tags: [],
-      transform: {
-        x: contextMenu.canvasX,
-        y: contextMenu.canvasY,
-        rotation: 0,
-        scaleX: 1,
-        scaleY: 1
-      },
-      properties: {},
-      logicRefs: [],
-      description: '',
-      width: 100,
-      height: 100,
-      color
-    })
+    addObject(
+      createBaseObjectByType({
+        type,
+        position: {
+          x: contextMenu.canvasX,
+          y: contextMenu.canvasY
+        },
+        existingObjects: objects
+      })
+    )
     closeContextMenu()
   }
 
