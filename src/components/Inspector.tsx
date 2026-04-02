@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCanvasStore, LogicRef } from '../store/useCanvasStore';
 import { Settings, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
+import { getClassSourceHints, ClassHint } from '../utils/classSourceHints';
 
 export const Inspector: React.FC = () => {
   const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject, objectClasses, assignClassToObject, reapplyMissingClassDefaults, unassignClassFromObject } = useCanvasStore();
@@ -99,9 +100,39 @@ export const Inspector: React.FC = () => {
 
   const relatedLogicItems = logicItems.filter(item => item.relatedObjectIds.includes(selectedObject.id));
 
-  const SectionHeader = ({ title }: { title: string }) => (
-    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, marginTop: 16, fontWeight: 'bold' }}>
-      {title.toUpperCase()}
+  const classInsight = getClassSourceHints(selectedObject, objectClasses);
+
+  const getHintStyle = (hint: ClassHint) => {
+    if (hint === 'matches class defaults') {
+      return { border: '1px solid rgba(100,108,255,0.55)', color: '#cfd3ff' };
+    }
+    if (hint === 'matches inherited defaults') {
+      return { border: '1px solid rgba(76,175,80,0.55)', color: '#c5f3cb' };
+    }
+    if (hint === 'mixed') {
+      return { border: '1px solid rgba(255,193,7,0.55)', color: '#ffe6a3' };
+    }
+    return { border: '1px solid rgba(255,255,255,0.22)', color: '#c0c0c0' };
+  };
+
+  const SectionHeader = ({ title, hint }: { title: string; hint?: ClassHint }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 16, marginBottom: 8 }}>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 'bold' }}>
+        {title.toUpperCase()}
+      </div>
+      {hint && (
+        <span
+          style={{
+            ...getHintStyle(hint),
+            fontSize: 10,
+            borderRadius: 999,
+            padding: '2px 8px',
+            textTransform: 'lowercase'
+          }}
+        >
+          {hint}
+        </span>
+      )}
     </div>
   );
 
@@ -192,6 +223,27 @@ export const Inspector: React.FC = () => {
           </div>
         </div>
 
+        <div style={{ marginBottom: 10, padding: 10, borderRadius: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ fontSize: 11, color: '#9aa1aa', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+            Class Summary
+          </div>
+          <div style={{ fontSize: 12, color: '#ddd', marginBottom: 4 }}>
+            <strong>Assigned:</strong> {classInsight.summary.assignedClassName}
+          </div>
+          <div style={{ fontSize: 12, color: '#ddd', marginBottom: 4 }}>
+            <strong>Parent:</strong> {classInsight.summary.parentClassName}
+          </div>
+          <div style={{ fontSize: 12, color: '#ddd', marginBottom: 6 }}>
+            <strong>State:</strong> {classInsight.summary.state}
+          </div>
+          <div style={{ fontSize: 11, color: '#949ca7', marginBottom: 4 }}>
+            {classInsight.summary.note}
+          </div>
+          <div style={{ fontSize: 10, color: '#7f8792' }}>
+            {classInsight.disclaimer}
+          </div>
+        </div>
+
         <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <button
             onClick={() => unassignClassFromObject(selectedObject.id)}
@@ -226,8 +278,9 @@ export const Inspector: React.FC = () => {
             Reapply Missing Defaults
           </button>
         </div>
-        <div style={{ fontSize: 11, color: '#777', marginBottom: 12 }}>
-          Detach clears only class link. Object values stay untouched.
+        <div style={{ fontSize: 11, color: '#777', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <span>Detach Class removes class link only.</span>
+          <span>Reapply Missing Defaults fills only missing values.</span>
         </div>
 
         <div>
@@ -301,7 +354,7 @@ export const Inspector: React.FC = () => {
       </div>
 
       {/* TAGS Section */}
-      <SectionHeader title="Tags" />
+      <SectionHeader title="Tags" hint={classInsight.hints.tags} />
       <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
         <span style={LabelStyle}>TAGS (comma separated)</span>
         <input 
@@ -316,7 +369,7 @@ export const Inspector: React.FC = () => {
       </div>
 
       {/* DESCRIPTION Section */}
-      <SectionHeader title="Description" />
+      <SectionHeader title="Description" hint={classInsight.hints.description} />
       <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
         <textarea 
           id="obj-desc"
@@ -330,7 +383,7 @@ export const Inspector: React.FC = () => {
       </div>
 
       {/* CUSTOM PROPERTIES Section */}
-      <SectionHeader title="Custom Properties" />
+      <SectionHeader title="Custom Properties" hint={classInsight.hints.properties} />
       <div style={{ background: 'rgba(0,0,0,0.2)', padding: 12, borderRadius: 8 }}>
         {Object.entries(selectedObject.properties || {}).map(([key, value]) => (
           <div key={key} style={{ display: 'flex', gap: 4, marginBottom: 8, alignItems: 'center' }}>

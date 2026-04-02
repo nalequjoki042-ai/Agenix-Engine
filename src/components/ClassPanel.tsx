@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { useCanvasStore } from '../store/useCanvasStore';
 import { Library, Plus, Trash2, PlusCircle } from 'lucide-react';
+import {
+  BROKEN_PARENT_OPTION_VALUE,
+  getClassParentUiState,
+  getInvalidParentSelectionReason
+} from '../utils/classParentUi';
 
 export const ClassPanel: React.FC = () => {
   const { objectClasses, createObjectClass, updateObjectClass, deleteObjectClass } = useCanvasStore();
@@ -13,6 +18,7 @@ export const ClassPanel: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [newPropKey, setNewPropKey] = useState('');
   const [newPropValue, setNewPropValue] = useState('');
+  const [parentFeedback, setParentFeedback] = useState<string | null>(null);
 
   const filteredItems = objectClasses.filter(c => {
     if (!searchQuery) return true;
@@ -54,6 +60,26 @@ export const ClassPanel: React.FC = () => {
     boxSizing: 'border-box' as const
   };
   const LabelStyle = { fontSize: 12, color: '#888' };
+  const parentUi = selectedClass ? getClassParentUiState(selectedClass, objectClasses) : null;
+
+  const handleParentChange = (nextParentId: string | null) => {
+    if (!selectedClass) return;
+    if (nextParentId === BROKEN_PARENT_OPTION_VALUE) return;
+
+    const invalidReason = getInvalidParentSelectionReason(selectedClass.id, nextParentId, objectClasses);
+    if (invalidReason === 'self') {
+      setParentFeedback('A class cannot be its own parent. Choose another class or None.');
+      return;
+    }
+
+    if (invalidReason === 'cycle') {
+      setParentFeedback('This parent would create an inheritance cycle. Choose another class or None.');
+      return;
+    }
+
+    setParentFeedback(null);
+    updateObjectClass(selectedClass.id, { parentClassId: nextParentId });
+  };
 
   return (
     <div
@@ -105,6 +131,7 @@ export const ClassPanel: React.FC = () => {
                 onClick={() => {
                   setSelectedClassId(cls.id);
                   if (deleteConfirmId) setDeleteConfirmId(null);
+                  if (parentFeedback) setParentFeedback(null);
                 }}
                 style={{
                   padding: '8px',
@@ -179,15 +206,47 @@ export const ClassPanel: React.FC = () => {
                 <div style={{ flex: 1 }}>
                   <span style={LabelStyle}>PARENT CLASS</span>
                   <select
-                    value={selectedClass.parentClassId || ''}
-                    onChange={e => updateObjectClass(selectedClass.id, { parentClassId: e.target.value || null })}
+                    value={parentUi?.selectorValue || ''}
+                    onChange={e => handleParentChange(e.target.value || null)}
                     style={InputStyle}
                   >
                     <option value="" style={{ color: 'black' }}>None</option>
-                    {objectClasses.filter(c => c.id !== selectedClass.id).map(c => (
-                      <option key={c.id} value={c.id} style={{ color: 'black' }}>{c.name}</option>
+                    {parentUi?.brokenParentId ? (
+                      <option value={BROKEN_PARENT_OPTION_VALUE} style={{ color: 'black' }}>
+                        Broken link ({parentUi.brokenParentId})
+                      </option>
+                    ) : null}
+                    {parentUi?.options.map(option => (
+                      <option key={option.id} value={option.id} style={{ color: 'black' }}>
+                        {option.label}
+                      </option>
                     ))}
                   </select>
+                  <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(0,0,0,0.2)', border: parentUi?.linkState === 'Broken Link' ? '1px solid rgba(255,107,107,0.45)' : '1px solid rgba(255,255,255,0.08)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 11 }}>
+                      <span style={{ color: '#888' }}>Current: <span style={{ color: 'white' }}>{parentUi?.currentParentName || 'None'}</span></span>
+                      <span style={{ color: '#888' }}>State: <span style={{ color: parentUi?.linkState === 'Broken Link' ? '#ff9b9b' : 'white' }}>{parentUi?.linkState || 'None'}</span></span>
+                    </div>
+                    <div style={{ marginTop: 6, fontSize: 11, color: parentUi?.linkState === 'Broken Link' ? '#ffb3b3' : '#aaa' }}>
+                      {parentUi?.note}
+                    </div>
+                    {parentFeedback ? (
+                      <div style={{ marginTop: 6, fontSize: 11, color: '#ffb3b3' }}>
+                        {parentFeedback}
+                      </div>
+                    ) : null}
+                    {parentUi?.brokenParentId ? (
+                      <button
+                        onClick={() => handleParentChange(null)}
+                        style={{ marginTop: 8, background: 'rgba(255,107,107,0.18)', border: '1px solid rgba(255,107,107,0.45)', color: '#ffdede', borderRadius: 4, cursor: 'pointer', padding: '4px 8px', fontSize: 11 }}
+                      >
+                        Clear Broken Link
+                      </button>
+                    ) : null}
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 11, color: '#888', lineHeight: 1.4 }}>
+                    Child inherits missing defaults from the parent chain. Child defaults may override parent values. This is not live destructive sync.
+                  </div>
                 </div>
               </div>
 

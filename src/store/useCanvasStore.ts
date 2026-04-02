@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { LogicTextItem } from '../types/logic'
 import { ObjectClass } from '../types/objectClass'
+import { getInvalidParentSelectionReason } from '../utils/classParentUi'
 
 export type LogicRef = {
   id: string;
@@ -72,26 +73,6 @@ interface CanvasState {
   assignClassToObject: (objectId: string, classId: string) => void
   reapplyMissingClassDefaults: (objectId: string) => void
   unassignClassFromObject: (objectId: string) => void
-}
-
-function causesCycle(childId: string, proposedParentId: string | null, objectClasses: ObjectClass[]): boolean {
-  if (!proposedParentId) return false;
-  if (childId === proposedParentId) return true;
-
-  let currentParentId: string | null = proposedParentId;
-  const visited = new Set<string>();
-
-  while (currentParentId) {
-    if (currentParentId === childId) return true;
-    if (visited.has(currentParentId)) return true;
-    visited.add(currentParentId);
-
-    const parentCls = objectClasses.find(c => c.id === currentParentId);
-    if (!parentCls) break;
-    currentParentId = parentCls.parentClassId || null;
-  }
-
-  return false;
 }
 
 function resolveInheritedClass(classId: string, objectClasses: ObjectClass[]): Partial<ObjectClass> | null {
@@ -291,9 +272,15 @@ export const useCanvasStore = create<CanvasState>((set) => ({
 
   updateObjectClass: (id, patch) => set((state) => {
     const cleanPatch = { ...patch };
-    if (cleanPatch.parentClassId !== undefined && causesCycle(id, cleanPatch.parentClassId, state.objectClasses)) {
-      console.warn(`[Agenix] Cyclic class inheritance detected. Parent assignment blocked.`);
-      delete cleanPatch.parentClassId;
+    if (cleanPatch.parentClassId !== undefined) {
+      const invalidReason = getInvalidParentSelectionReason(id, cleanPatch.parentClassId, state.objectClasses);
+      if (invalidReason === 'self') {
+        console.warn(`[Agenix] Class cannot be its own parent. Parent assignment blocked.`);
+        delete cleanPatch.parentClassId;
+      } else if (invalidReason === 'cycle') {
+        console.warn(`[Agenix] Cyclic class inheritance detected. Parent assignment blocked.`);
+        delete cleanPatch.parentClassId;
+      }
     }
 
     return {
