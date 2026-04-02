@@ -3,9 +3,10 @@ import { useCanvasStore, LogicRef } from '../store/useCanvasStore';
 import { Settings, Plus, Trash2, FileText, Link2Off } from 'lucide-react';
 
 export const Inspector: React.FC = () => {
-  const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject, objectClasses, assignClassToObject, unassignClassFromObject } = useCanvasStore();
+  const { objects, selectedObjectIds, updateObject, removeObject, logicItems, selectLogicItem, addLogicItem, unlinkLogicFromObject, objectClasses, assignClassToObject, reapplyMissingClassDefaults, unassignClassFromObject } = useCanvasStore();
   
   const selectedObject = objects.find(o => o.id === selectedObjectIds[0]);
+  const hasAssignedClass = Boolean(selectedObject?.classId);
 
   const [newPropKey, setNewPropKey] = useState('');
   const [newPropValue, setNewPropValue] = useState('');
@@ -189,6 +190,44 @@ export const Inspector: React.FC = () => {
               ))}
             </select>
           </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <button
+            onClick={() => unassignClassFromObject(selectedObject.id)}
+            disabled={!hasAssignedClass}
+            style={{
+              flex: 1,
+              background: hasAssignedClass ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.2)',
+              color: hasAssignedClass ? 'white' : '#666',
+              borderRadius: 4,
+              cursor: hasAssignedClass ? 'pointer' : 'not-allowed',
+              padding: '6px 8px',
+              fontSize: 12
+            }}
+          >
+            Detach Class
+          </button>
+          <button
+            onClick={() => reapplyMissingClassDefaults(selectedObject.id)}
+            disabled={!hasAssignedClass}
+            style={{
+              flex: 1,
+              background: hasAssignedClass ? 'rgba(100,108,255,0.2)' : 'rgba(100,108,255,0.06)',
+              border: '1px solid rgba(100,108,255,0.5)',
+              color: hasAssignedClass ? '#cfd3ff' : '#666',
+              borderRadius: 4,
+              cursor: hasAssignedClass ? 'pointer' : 'not-allowed',
+              padding: '6px 8px',
+              fontSize: 12
+            }}
+          >
+            Reapply Missing Defaults
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: '#777', marginBottom: 12 }}>
+          Detach clears only class link. Object values stay untouched.
         </div>
 
         <div>

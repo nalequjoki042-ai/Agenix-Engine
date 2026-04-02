@@ -15,7 +15,9 @@ describe('Scene Serialization & Validation', () => {
 
   describe('Validation Logic', () => {
     it('should throw error if data is not an array', () => {
-      expect(() => validateAndFilterScene({})).toThrow('Scene data must be an array of objects.');
+      expect(() => validateAndFilterScene({})).toThrow(
+        'Scene data must be an array of objects or an object with "objects" property.'
+      );
     });
 
     it('should filter out objects missing mandatory fields', () => {
@@ -90,6 +92,7 @@ describe('Scene Serialization & Validation', () => {
         id: '1',
         name: 'Test',
         type: 'box',
+        classId: null,
         parentId: null,
         childrenIds: [],
         tags: ['a'],

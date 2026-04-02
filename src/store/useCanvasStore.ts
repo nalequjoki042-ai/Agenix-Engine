@@ -70,6 +70,7 @@ interface CanvasState {
   updateObjectClass: (id: string, patch: Partial<ObjectClass>) => void
   deleteObjectClass: (id: string) => void
   assignClassToObject: (objectId: string, classId: string) => void
+  reapplyMissingClassDefaults: (objectId: string) => void
   unassignClassFromObject: (objectId: string) => void
 }
 
@@ -141,6 +142,33 @@ function resolveInheritedClass(classId: string, objectClasses: ObjectClass[]): P
     defaultTags: resolvedTags,
     defaultProperties: resolvedProperties,
     baseType: resolvedBaseType
+  };
+}
+
+function applyMissingClassDefaults(
+  object: GameObject,
+  resolvedClass: Partial<ObjectClass>,
+  nextClassId?: string | null
+): GameObject {
+  const description = (object.description && object.description.trim() !== '')
+    ? object.description
+    : (resolvedClass.defaultDescription || object.description);
+
+  const tags = [...new Set([...(object.tags || []), ...(resolvedClass.defaultTags || [])])];
+
+  const properties = { ...(object.properties || {}) };
+  Object.entries(resolvedClass.defaultProperties || {}).forEach(([key, value]) => {
+    if (!(key in properties)) {
+      properties[key] = value;
+    }
+  });
+
+  return {
+    ...object,
+    classId: nextClassId !== undefined ? nextClassId : object.classId,
+    description,
+    tags,
+    properties
   };
 }
 
@@ -295,29 +323,29 @@ export const useCanvasStore = create<CanvasState>((set) => ({
     return {
       objects: state.objects.map(obj => {
         if (obj.id !== objectId) return obj;
-
-        // Apply soft template mapping
-        const description = (obj.description && obj.description.trim() !== '')
-          ? obj.description
-          : (resolvedClass.defaultDescription || obj.description);
-
-        const tags = [...new Set([...(obj.tags || []), ...(resolvedClass.defaultTags || [])])];
-
-        const properties = { ...(obj.properties || {}) };
-        Object.entries(resolvedClass.defaultProperties || {}).forEach(([key, value]) => {
-          if (!(key in properties)) {
-            properties[key] = value;
-          }
-        });
-
-        return {
-          ...obj,
-          classId,
-          description,
-          tags,
-          properties
-        };
+        return applyMissingClassDefaults(obj, resolvedClass, classId);
       })
+    };
+  }),
+
+  reapplyMissingClassDefaults: (objectId) => set((state) => {
+    const targetObject = state.objects.find(obj => obj.id === objectId);
+    if (!targetObject || !targetObject.classId) {
+      return {};
+    }
+
+    const resolvedClass = resolveInheritedClass(targetObject.classId, state.objectClasses);
+    if (!resolvedClass) {
+      console.warn(`[Agenix Class] Cannot reapply defaults: class "${targetObject.classId}" not found.`);
+      return {};
+    }
+
+    return {
+      objects: state.objects.map(obj =>
+        obj.id === objectId
+          ? applyMissingClassDefaults(obj, resolvedClass)
+          : obj
+      )
     };
   }),
 
